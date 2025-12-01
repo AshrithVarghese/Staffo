@@ -7,23 +7,74 @@ export default function Login() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loginAsStaff, setLoginAsStaff] = useState(false);
 
+  // --------------------------
+  // Fetch the user's role
+  // --------------------------
+  const fetchUserRole = async (userId) => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .single();
+
+    if (error) {
+      console.error("Profile fetch error:", error);
+      return null;
+    }
+
+    return data?.role || null;
+  };
+
+  // --------------------------
+  // Redirect based on role
+  // --------------------------
+  const redirectByRole = (role) => {
+    if (role === "staff") {
+      window.location.href = "/staffdashboard";
+    } else {
+      window.location.href = "/dashboard";
+    }
+  };
+
+  // --------------------------
+  // Handle OAuth callback
+  // --------------------------
   useEffect(() => {
     const hash = window.location.hash;
+
+    // OAuth error
     if (hash.includes("error")) {
       toast.error("Only @jecc.ac.in emails are allowed");
       window.history.replaceState({}, document.title, "/login");
+      return;
+    }
+
+    // OAuth success — only when ?redirect=1 is present
+    if (window.location.search.includes("redirect=1")) {
+      supabase.auth.getUser().then(async ({ data, error }) => {
+        if (error || !data?.user) return;
+
+        const role = await fetchUserRole(data.user.id);
+        redirectByRole(role);
+      });
+
+      // Clean URL
+      window.history.replaceState({}, "", "/login");
     }
   }, []);
 
+  // --------------------------
+  // Google Login
+  // --------------------------
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: window.location.origin + "/dashboard",
-        queryParams: { hd: "jecc.ac.in" }, // domain hint
+        redirectTo: window.location.origin + "/login?redirect=1",
+        queryParams: { hd: "jecc.ac.in" },
       },
     });
 
@@ -33,6 +84,9 @@ export default function Login() {
     }
   };
 
+  // --------------------------
+  // Email Login
+  // --------------------------
   const handleEmailLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -43,7 +97,6 @@ export default function Login() {
       return;
     }
 
-    // optional: enforce jecc domain on email
     if (!email.endsWith("@jecc.ac.in")) {
       toast.error("Only @jecc.ac.in emails are allowed");
       setLoading(false);
@@ -62,13 +115,18 @@ export default function Login() {
     }
 
     toast.success("Signed in");
+
+    // Fetch role and redirect
+    const role = await fetchUserRole(data.user.id);
     setLoading(false);
-    // optionally redirect here
+    redirectByRole(role);
   };
 
+  // --------------------------
+  // UI
+  // --------------------------
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 relative">
-
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center">
           <img
@@ -81,13 +139,16 @@ export default function Login() {
         </div>
 
         <div className="bg-white mt-6 shadow-md rounded-2xl p-6">
-
           <button
             onClick={handleGoogleLogin}
             disabled={googleLoading}
-            className=" w-full py-3 rounded-xl border border-gray-200 flex items-center justify-center gap-3 bg-white hover:shadow transition disabled:opacity-60"
+            className="w-full py-3 rounded-xl border border-gray-200 flex items-center justify-center gap-3 bg-white hover:shadow transition disabled:opacity-60"
           >
-            <img src="https://www.w3schools.com/whatis/img_google.jpg" alt="google" className="w-5 h-5" />
+            <img
+              src="https://www.w3schools.com/whatis/img_google.jpg"
+              alt="google"
+              className="w-5 h-5"
+            />
             <span className="text-sm text-gray-700">
               {googleLoading ? "Please wait..." : "Continue with Google"}
             </span>
