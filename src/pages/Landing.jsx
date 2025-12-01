@@ -9,7 +9,7 @@ export default function Landing() {
       <div className="max-w-4xl w-full items-center">
         <div className="flex flex-col gap-6">
           <img src="/staffo.png" alt="Staffo" className="w-30 absolute top-8 left-5" />
-          <button className='absolute top-10 right-5 bg-black text-white px-5 py-2 rounded-lg font-medium'>Login</button>
+          <button onClick={()=>navigate('/login')} className='absolute top-9 right-5 bg-black text-white px-5 py-2 rounded-lg font-medium'>Login</button>
 
           <h1 className="text-5xl md:text-5xl font-bold text-center mt-40">Staffo <br/> <span className='font-semibold text-3xl'> Simple staff locator</span></h1>
           <p className="text-gray-600 text-sm text-center">Sign in with your JECC account to locate where your staff is or check if they are available.</p>
@@ -20,7 +20,7 @@ export default function Landing() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl mt-10">
+        <div className="bg-white rounded-2xl mt-10" id='features'>
           <h3 className="text-2xl font-semibold mb-10 text-center">Why Staffo?</h3>
           <ul className="text-gray-700">
             <li className='border border-black w-fit px-2 py-0.5 rounded-full bg-black text-white text-sm'># Real time status</li>
@@ -41,6 +41,8 @@ export default function Landing() {
             <button onClick={()=>navigate('/login')} className='bg-white text-black px-2 py-1 rounded-lg mt-3 font-medium w-full'>Try Staffo</button>
         </div>
       </div>
+
+      <p className='text-xs text-gray-400'>version 1.0.0</p>
 
 
     </div>
