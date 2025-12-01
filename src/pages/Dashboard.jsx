@@ -268,7 +268,7 @@ export default function Dashboard() {
         </div>
 
         {/* Filter chips */}
-        <div className="flex gap-3 overflow-x-auto pb-3 mb-6 mx-auto max-w-xl">
+        <div className="flex gap-3 overflow-x-auto pb-3 mb-6 mx-auto max-w-xl scrollbar-thin scrollbar-thumb scrollbar-track">
           {FILTERS.map((f) => (
             <button
               key={f}

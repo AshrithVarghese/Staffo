@@ -4,3 +4,40 @@
     font-family:  "Poppins", sans-serif;
     scroll-behavior: smooth;
 }
+
+
+@layer utilities {
+
+  /* Scrollbar Width */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  /* Scrollbar Track */
+  .scrollbar-track::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+
+  /* Scrollbar Thumb */
+  .scrollbar-thumb::-webkit-scrollbar-thumb {
+    background: #222;
+    border-radius: 100px;
+  }
+
+  /* Hover effect */
+  .scrollbar-thumb:hover::-webkit-scrollbar-thumb {
+    background: #000;
+  }
+
+  /* Firefox support */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #222 #f1f1f1;
+  }
+}
