@@ -1,15 +1,12 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../utils/supabase.js";
+import { supabase } from "../utils/supabase";
 import toast from "react-hot-toast";
 
 export default function Login() {
-  const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
 
   // --------------------------
-  // Fetch the user's role
+  // Fetch role
   // --------------------------
   const fetchUserRole = async (userId) => {
     const { data, error } = await supabase
@@ -23,11 +20,11 @@ export default function Login() {
       return null;
     }
 
-    return data?.role || null;
+    return data?.role ?? null;
   };
 
   // --------------------------
-  // Redirect based on role
+  // Redirect
   // --------------------------
   const redirectByRole = (role) => {
     if (role === "staff") {
@@ -38,29 +35,25 @@ export default function Login() {
   };
 
   // --------------------------
-  // Handle OAuth callback
+  // OAuth callback
   // --------------------------
   useEffect(() => {
-    const hash = window.location.hash;
+    const params = new URLSearchParams(window.location.search);
 
-    // OAuth error
-    if (hash.includes("error")) {
+    // Supabase sends ?error=access_denied etc
+    if (params.get("error")) {
       toast.error("Only @jecc.ac.in emails are allowed");
-      window.history.replaceState({}, document.title, "/login");
       return;
     }
 
-    // OAuth success — only when ?redirect=1 is present
-    if (window.location.search.includes("redirect=1")) {
+    // When returning from Google OAuth
+    if (params.get("redirect") === "1") {
       supabase.auth.getUser().then(async ({ data, error }) => {
         if (error || !data?.user) return;
 
         const role = await fetchUserRole(data.user.id);
         redirectByRole(role);
       });
-
-      // Clean URL
-      window.history.replaceState({}, "", "/login");
     }
   }, []);
 
@@ -73,8 +66,8 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: window.location.origin + "/login?redirect=1",
-        queryParams: { hd: "jecc.ac.in" },
+        redirectTo: `${window.location.origin}/login?redirect=1`,
+        queryParams: { hd: "jecc.ac.in" }, // restrict to domain
       },
     });
 
@@ -84,47 +77,6 @@ export default function Login() {
     }
   };
 
-  // --------------------------
-  // Email Login
-  // --------------------------
-  const handleEmailLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    if (!email || !password) {
-      toast.error("Email and password are required");
-      setLoading(false);
-      return;
-    }
-
-    if (!email.endsWith("@jecc.ac.in")) {
-      toast.error("Only @jecc.ac.in emails are allowed");
-      setLoading(false);
-      return;
-    }
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      toast.error(error.message || "Login failed");
-      setLoading(false);
-      return;
-    }
-
-    toast.success("Signed in");
-
-    // Fetch role and redirect
-    const role = await fetchUserRole(data.user.id);
-    setLoading(false);
-    redirectByRole(role);
-  };
-
-  // --------------------------
-  // UI
-  // --------------------------
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 relative">
       <div className="w-full max-w-sm">
