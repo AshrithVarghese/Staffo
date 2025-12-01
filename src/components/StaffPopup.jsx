@@ -12,7 +12,7 @@ const STATUS_META = {
   on_leave: { label: "On Leave", bg: "bg-gray-100", text: "text-gray-800", dot: "bg-gray-500" },
 };
 
-export default function StaffPopup({ staff, onClose = () => {}, onViewMap = () => {} }) {
+export default function StaffPopup({ staff, onClose = () => { }, onViewMap = () => { } }) {
   if (!staff) return null;
   const meta = STATUS_META[staff.status] || STATUS_META.on_leave;
 
@@ -99,3 +99,4 @@ export default function StaffPopup({ staff, onClose = () => {}, onViewMap = () =
     </div>
   );
 }
+

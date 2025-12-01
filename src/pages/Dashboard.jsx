@@ -1,211 +1,10 @@
-// Dashboard.jsx
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { MagnifyingGlass, MapPin } from "@phosphor-icons/react";
-import StaffPopup from "./StaffPopup";
+import StaffPopup from "../components/StaffPopup.jsx";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../utils/supabase";
 
-export const staffList = [
-  // OFFICE
-  {
-    id: 1,
-    name: "Mrs. Anitha R.",
-    dept: "OFFICE",
-    location: "Main Office, Block A",
-    status: "available",
-    avatar: "/profile-icon.png",
-  },
-  {
-    id: 2,
-    name: "Mr. Sanjay Kumar",
-    dept: "OFFICE",
-    location: "Finance Section, Block A",
-    status: "busy",
-    avatar: "/profile-icon.png",
-  },
-
-  // BSH
-  {
-    id: 3,
-    name: "Dr. Maya Pillai",
-    dept: "BSH",
-    location: "Maths Dept – Room 112",
-    status: "available",
-    avatar: "/profile-icon.png",
-  },
-  {
-    id: 4,
-    name: "Prof. Ramesh Varma",
-    dept: "BSH",
-    location: "Science Block – Room 210",
-    status: "in_class",
-    avatar: "/profile-icon.png",
-  },
-
-  // CSE
-  {
-    id: 5,
-    name: "Dr. Evelyn Reed",
-    dept: "CSE",
-    location: "Room 402, Block C",
-    status: "available",
-    avatar: "/profile-icon.png",
-  },
-  {
-    id: 6,
-    name: "Ms. Sandra Jacob",
-    dept: "CSE",
-    location: "Project Lab – Block C",
-    status: "busy",
-    avatar: "/profile-icon.png",
-  },
-
-  // CY (Chemistry)
-  {
-    id: 7,
-    name: "Dr. Ravi Chandran",
-    dept: "CY",
-    location: "Chemistry Lab 1 – Block B",
-    status: "in_class",
-    avatar: "/profile-icon.png",
-  },
-  {
-    id: 8,
-    name: "Ms. Neethu Raj",
-    dept: "CY",
-    location: "Chemistry Office – Block B",
-    status: "available",
-    avatar: "/profile-icon.png",
-  },
-
-  // AD (Architecture / Additional Dept)
-  {
-    id: 9,
-    name: "Prof. Helen Mathew",
-    dept: "AD",
-    location: "Architecture Studio – Block D",
-    status: "on_leave",
-    avatar: "/profile-icon.png",
-  },
-  {
-    id: 10,
-    name: "Mr. Aju Francis",
-    dept: "AD",
-    location: "Design Room – Block D",
-    status: "available",
-    avatar: "/profile-icon.png",
-  },
-
-  // EEE
-  {
-    id: 11,
-    name: "Dr. Suraj Menon",
-    dept: "EEE",
-    location: "Power Systems Lab – Block E",
-    status: "busy",
-    avatar: "/profile-icon.png",
-  },
-  {
-    id: 12,
-    name: "Ms. Fathima Noor",
-    dept: "EEE",
-    location: "Electronics Lab – Block E",
-    status: "available",
-    avatar: "/profile-icon.png",
-  },
-
-  // ME
-  {
-    id: 13,
-    name: "Mr. Rajeev Nair",
-    dept: "ME",
-    location: "Workshop – Block F",
-    status: "in_class",
-    avatar: "/profile-icon.png",
-  },
-  {
-    id: 14,
-    name: "Dr. Priya Joseph",
-    dept: "ME",
-    location: "Mechanics Lab – Block F",
-    status: "available",
-    avatar: "/profile-icon.png",
-  },
-
-  // CE
-  {
-    id: 15,
-    name: "Prof. Deepak S.",
-    dept: "CE",
-    location: "Civil Lab – Block G",
-    status: "busy",
-    avatar: "/profile-icon.png",
-  },
-  {
-    id: 16,
-    name: "Ms. Lincy Thomas",
-    dept: "CE",
-    location: "Survey Lab – Block G",
-    status: "available",
-    avatar: "/profile-icon.png",
-  },
-
-  // ECE
-  {
-    id: 17,
-    name: "Dr. Rekha N.",
-    dept: "ECE",
-    location: "Electronics Lab – Block H",
-    status: "in_class",
-    avatar: "/profile-icon.png",
-  },
-  {
-    id: 18,
-    name: "Mr. Varun Krishna",
-    dept: "ECE",
-    location: "Communication Lab – Block H",
-    status: "available",
-    avatar: "/profile-icon.png",
-  },
-
-  // MR (Mechanical Robotics / Mechatronics)
-  {
-    id: 19,
-    name: "Dr. Ajith Mohan",
-    dept: "MR",
-    location: "Robotics Lab – Block R",
-    status: "busy",
-    avatar: "/profile-icon.png",
-  },
-  {
-    id: 20,
-    name: "Ms. Riya Joseph",
-    dept: "MR",
-    location: "Automation Lab – Block R",
-    status: "available",
-    avatar: "/profile-icon.png",
-  },
-
-  // RA (Research & Analysis)
-  {
-    id: 21,
-    name: "Dr. Thomas Abraham",
-    dept: "RA",
-    location: "Research Center – Block X",
-    status: "available",
-    avatar: "/profile-icon.png",
-  },
-  {
-    id: 22,
-    name: "Ms. Sneha Prasad",
-    dept: "RA",
-    location: "Data Lab – Block X",
-    status: "on_leave",
-    avatar: "/profile-icon.png",
-  },
-];
-
-
-const FILTERS = ["All","OFFICE", "BSH", "CSE", "CY", "AD", "EEE", "ME", "CE", "ECE", "MR", "RA"];
+const FILTERS = ["All", "OFFICE", "BSH", "CSE", "CY", "AD", "EEE", "ME", "CE", "ECE", "MR", "RA"];
 const STATUS_META = {
   available: { label: "Available", bg: "bg-green-100", text: "text-green-800", dot: "bg-green-500" },
   in_class: { label: "In Class", bg: "bg-red-100", text: "text-red-800", dot: "bg-red-500" },
@@ -217,20 +16,45 @@ export default function Dashboard() {
   const [q, setQ] = useState("");
   const [active, setActive] = useState("All");
   const [selected, setSelected] = useState(null);
+  const [staff, setStaff] = useState([]); // <— FETCHED FROM SUPABASE
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const load = async () => {
+      const { data, error } = await supabase
+        .from("staff")
+        .select("*");
+
+      if (error) {
+        console.error("Supabase error:", error);
+        return;
+      }
+
+      const mapped = data.map((s) => ({
+        ...s,
+        avatar: s.photo_url, // required by UI
+      }));
+
+      setStaff(mapped);
+    };
+
+    load();
+  }, []);
+
   const filtered = useMemo(() => {
-    return staffList.filter((s) => {
+    return staff.filter((s) => {
       const matchFilter = active === "All" ? true : s.dept === active;
       const qLower = q.trim().toLowerCase();
+
       const matchQuery =
         !qLower ||
-        s.name.toLowerCase().includes(qLower) ||
-        s.dept.toLowerCase().includes(qLower) ||
-        s.location.toLowerCase().includes(qLower);
+        s.name?.toLowerCase().includes(qLower) ||
+        s.dept?.toLowerCase().includes(qLower) ||
+        s.location?.toLowerCase().includes(qLower);
+
       return matchFilter && matchQuery;
     });
-  }, [q, active]);
+  }, [q, active, staff]);
 
   const handleViewMap = (staff) => {
     alert(`Open map for ${staff.name} — location: ${staff.location}`);
@@ -240,8 +64,12 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gray-50 px-4 pb-8 pt-4">
       <header className="max-w-full mx-auto mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          {/* use a valid tailwind width */}
-          <img src="/staffo.png" alt="Staffo" className="w-32 cursor-pointer" onClick={() => navigate("/")} />
+          <img
+            src="/staffo.png"
+            alt="Staffo"
+            className="w-32 cursor-pointer"
+            onClick={() => navigate("/")}
+          />
         </div>
 
         <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center">
@@ -252,7 +80,8 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto"> {/* ← wider wrapper so 2 columns fit */}
+      <main className="max-w-7xl mx-auto">
+
         {/* Search */}
         <div className="mb-4 max-w-full">
           <div className="relative">
@@ -261,7 +90,8 @@ export default function Dashboard() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search for staff..."
-              className="w-full rounded-xl py-3 pl-12 pr-4 shadow-sm border border-transparent focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white"
+              className="w-full rounded-xl py-3 pl-12 pr-4 shadow-sm border border-transparent 
+                         focus:outline-none focus:ring-2 focus:ring-gray-400 bg-white"
             />
           </div>
         </div>
@@ -272,24 +102,25 @@ export default function Dashboard() {
             <button
               key={f}
               onClick={() => setActive(f)}
-              className={`whitespace-nowrap px-3 py-1 rounded-full text-sm font-medium shadow-sm cursor-pointer ${
-                active === f ? "bg-black text-white" : "bg-white text-gray-700"
-              }`}
+              className={`whitespace-nowrap px-3 py-1 rounded-full text-sm font-medium shadow-sm cursor-pointer 
+                ${active === f ? "bg-black text-white" : "bg-white text-gray-700"}`}
             >
               {f}
             </button>
           ))}
         </div>
 
-        {/* Staff cards grid: 1 column on small, 2 columns on lg and above */}
+        {/* Staff cards */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {filtered.map((s) => {
             const meta = STATUS_META[s.status] || STATUS_META["on_leave"];
+
             return (
               <button
                 key={s.id}
                 onClick={() => setSelected(s)}
-                className="w-full text-left bg-white rounded-2xl p-5 shadow-sm flex items-center gap-4 hover:shadow-md transition cursor-pointer"
+                className="w-full text-left bg-white rounded-2xl p-5 shadow-sm flex items-center gap-4 
+                           hover:shadow-md transition cursor-pointer"
               >
                 <img
                   src={s.avatar}
@@ -306,7 +137,9 @@ export default function Dashboard() {
                     </div>
 
                     <div className={`inline-flex items-center justify-center px-3 py-1 rounded-full ${meta.bg} shrink-0`}>
-                      <span className={`text-xs font-medium ${meta.text} whitespace-nowrap`}>{meta.label}</span>
+                      <span className={`text-xs font-medium ${meta.text} whitespace-nowrap`}>
+                        {meta.label}
+                      </span>
                     </div>
                   </div>
 
@@ -321,7 +154,9 @@ export default function Dashboard() {
         </div>
 
         {filtered.length === 0 && (
-          <div className="bg-white rounded-2xl p-6 text-center text-gray-500 mt-6">No staff found.</div>
+          <div className="bg-white rounded-2xl p-6 text-center text-gray-500 mt-6">
+            No staff found.
+          </div>
         )}
       </main>
 
@@ -341,7 +176,7 @@ export default function Dashboard() {
             schedule: selected.schedule,
           }}
           onClose={() => setSelected(null)}
-          onViewMap={(s) => {
+          onViewMap={() => {
             handleViewMap(selected);
             setSelected(null);
           }}
