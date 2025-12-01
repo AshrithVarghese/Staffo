@@ -2,6 +2,7 @@
 import { useState, useMemo } from "react";
 import { MagnifyingGlass, MapPin } from "@phosphor-icons/react";
 import StaffPopup from "./StaffPopup"; // <- make sure path is correct
+import { useNavigate } from "react-router-dom";
 
 export const staffList = [
   // OFFICE
@@ -217,6 +218,8 @@ export default function Dashboard() {
   const [active, setActive] = useState("All");
   const [selected, setSelected] = useState(null); // selected staff for popup
 
+  const navigate = useNavigate();
+
   const filtered = useMemo(() => {
     return staffList.filter((s) => {
       const matchFilter = active === "All" ? true : s.dept === active;
@@ -239,7 +242,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gray-50 px-4 pb-8 pt-4">
       <header className="max-w-full mx-auto mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
-            <img src="/staffo.png" alt="Staffo" className="w-30" />
+            <img src="/staffo.png" alt="Staffo" className="w-30" onClick={()=>{navigate('/')}}/>
         </div>
 
         <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center">
