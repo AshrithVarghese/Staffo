@@ -190,17 +190,17 @@ export default function StaffDashboard() {
         </div>
 
         <div className="flex flex-row justify-around">
-          <div className="bg-white text-black border rounded-full px-6 py-2 flex items-center gap-1 cursor-pointer" onClick={() => setShowSetup(true)}>
+          <div className="bg-white text-black border rounded-full px-3 py-2 flex items-center gap-1 cursor-pointer" onClick={() => setShowSetup(true)}>
             <PencilSimple size={20} />
-            <p>Edit Details</p>
+            <p className="text-md">Edit Details</p>
           </div>
-          <div
-            className="bg-white text-black border rounded-full px-6 py-2 flex items-center gap-1 cursor-pointer"
+          {/* <div
+            className="bg-white text-black border rounded-full px-3 py-2 flex items-center gap-1 cursor-pointer"
             onClick={() => navigate(`/meetings?staffId=${staff.id}`)}
           >
             <CalendarCheck size={20} />
-            <p>Your Meetings</p>
-          </div>
+            <p className="text-sm">Your Meetings</p>
+          </div> */}
         </div>
 
         {/* Status Editor */}
