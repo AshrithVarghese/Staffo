@@ -155,7 +155,7 @@ export default function Dashboard() {
 
                   <div className="mt-3 items-center text-sm text-gray-500 gap-0.5 inline-flex">
                     <MapPin size={18} />
-                    <span className="truncate max-w-xs">{s.location}</span>
+                    <span className="truncate max-w-xs">{s.location || "Not provided"}</span>
                   </div>
                 </div>
               </button>

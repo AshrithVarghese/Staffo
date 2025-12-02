@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { MapPin } from "@phosphor-icons/react";
+import { MapPin, CalendarPlus, PencilSimple, Plus } from "@phosphor-icons/react";
 import { supabase } from "../utils/supabase";
 import Timetable from "../components/Timetable";
 
@@ -61,7 +61,10 @@ export default function StaffDashboard() {
     load();
   }, []);
 
-  if (loading) return <div className="p-6">Loading...</div>;
+  if (loading) return <div className="p-6  flex flex-col justify-center items-center mt-[35dvh]">
+    <img src="/staffo.png" alt="Loading..." className="w-50"/>
+    <p  className="mt-5 text-gray-500">Setting up your dashboard...</p>
+  </div>;
   if (!profile || !staff) return null;
 
   const meta = STATUS_META[staff.status] || STATUS_META.on_leave;
@@ -129,13 +132,15 @@ export default function StaffDashboard() {
 
       {/* Header */}
       <header className="max-w-full mx-auto mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-800">Staff Dashboard</h1>
+        <div className="flex flex-col gap-5">
+        <img src="/staffo.png" alt="staffo logo" className="w-32 cursor-pointer" onClick={() => navigate("/")} />
+        <h1 className="text-xl font-semibold text-gray-800 ml-2">Staff Dashboard</h1>
+        </div>
 
-        <img
-          onClick={() => setShowSetup(true)}
-          src={staff.photo_url || "/profile-icon.png"}
-          className="w-12 h-12 rounded-full object-cover shadow cursor-pointer hover:scale-105 transition"
-        />
+        <div className="bg-black text-white rounded-full px-3 py-1 flex gap-1" onClick={()=>setShowSetup(true)}>
+          <PencilSimple size={20} />
+          <p>Edit Details</p>
+        </div>
       </header>
 
       <main className="max-w-3xl mx-auto space-y-6">
@@ -151,7 +156,7 @@ export default function StaffDashboard() {
             <div>
               <h2 className="text-lg font-semibold text-gray-800">{staff.name}</h2>
               <p className="text-sm text-gray-500">
-                {staff.designation || "No Designation"} — {staff.dept || "No Dept"}
+                {staff.designation || "No Designation"} - {staff.dept || "No Dept"}
               </p>
 
               <div className={`mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full ${meta.bg}`}>
@@ -183,13 +188,15 @@ export default function StaffDashboard() {
 
         {/* Location Editor */}
         <div className="bg-white rounded-2xl p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Current Location</h3>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Change Location</h3>
 
+          <p className="text-sm mb-1">Current Location</p>
           <div className="flex items-center gap-3 mb-3">
             <MapPin size={20} className="text-black" />
             <span className="font-medium text-gray-700">{staff.location || "No location set"}</span>
           </div>
 
+          <p className="text-sm mb-1">New Location</p>
           <input
             type="text"
             value={staff.location || ""}
@@ -203,9 +210,11 @@ export default function StaffDashboard() {
         {/* Timetable Button */}
         <button
           onClick={() => setShowTimetable(true)}
-          className="w-full py-3 bg-black text-white rounded-xl font-medium shadow-md"
+          className="w-full bg-white text-black border border-black border-dashed rounded-xl font-medium shadow-md flex flex-col items-center justify-center py-15"
         >
-          Add / Edit Timetable
+          <p className="bg-black rounded-full p-2"><Plus size={32} weight="bold" className="text-white" /></p>
+          <p className="mt-3">Add or Edit Timetable</p>
+          <p className="text-xs w-[80%] text-gray-600 mt-3">Upload your schedule to keep students informed about your availability.</p>
         </button>
       </main>
 
@@ -260,7 +269,7 @@ function SetupModal({ staff, profile, updateStaff, updateProfile, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-5">
       <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow">
         <h2 className="text-lg font-semibold mb-4">Complete Your Profile</h2>
 
