@@ -66,8 +66,8 @@ export default function StaffDashboard() {
   }, []);
 
   if (loading) return <div className="p-6  flex flex-col justify-center items-center mt-[35dvh]">
-    <img src="/staffo.png" alt="Loading..." className="w-50"/>
-    <p  className="mt-5 text-gray-500">Setting up your dashboard...</p>
+    <img src="/staffo.png" alt="Loading..." className="w-50" />
+    <p className="mt-5 text-gray-500">Setting up your dashboard...</p>
   </div>;
   if (!profile || !staff) return null;
 
@@ -147,8 +147,8 @@ export default function StaffDashboard() {
       {/* Header */}
       <header className="max-w-full mx-auto mb-6 flex items-center justify-between">
         <div className="flex flex-col gap-5">
-        <img src="/staffo.png" alt="staffo logo" className="w-32 cursor-pointer" onClick={() => navigate("/dashboard")} />
-        <h1 className="text-xl font-semibold text-gray-800 ml-2">Staff Dashboard</h1>
+          <img src="/staffo.png" alt="staffo logo" className="w-32 cursor-pointer" onClick={() => navigate("/dashboard")} />
+          <h1 className="text-xl font-semibold text-gray-800 ml-2">Staff Dashboard</h1>
         </div>
 
         {/* <div className="flex flex-col">
@@ -173,7 +173,7 @@ export default function StaffDashboard() {
               className="w-20 h-20 rounded-full object-cover"
             />
 
-            <PencilSimple size={25} className="cursor-pointer absolute bg-black text-white rounded-full p-1 ml-13 mt-15" onClick={() => setShowDpUploader(true)}/>
+            <PencilSimple size={25} className="cursor-pointer absolute bg-black text-white rounded-full p-1 ml-13 mt-15" onClick={() => setShowDpUploader(true)} />
 
             <div>
               <h2 className="text-lg font-semibold text-gray-800">{staff.name}</h2>
@@ -189,12 +189,15 @@ export default function StaffDashboard() {
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row gap-2 justify-evenly">
-          <div className="bg-white text-black border rounded-full px-3 py-1 flex items-center gap-1 cursor-pointer" onClick={()=>setShowSetup(true)}>
+        <div className="flex flex-row justify-around">
+          <div className="bg-white text-black border rounded-full px-6 py-2 flex items-center gap-1 cursor-pointer" onClick={() => setShowSetup(true)}>
             <PencilSimple size={20} />
             <p>Edit Details</p>
           </div>
-          <div className="bg-black text-white border rounded-full px-3 py-1 flex items-center gap-1 cursor-pointer" onClick={()=>navigate("/meetings")}>
+          <div
+            className="bg-white text-black border rounded-full px-6 py-2 flex items-center gap-1 cursor-pointer"
+            onClick={() => navigate(`/meetings?staffId=${staff.id}`)}
+          >
             <CalendarCheck size={20} />
             <p>Your Meetings</p>
           </div>

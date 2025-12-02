@@ -1,71 +1,101 @@
 import React, { useEffect, useState } from "react";
-import { Routes, Route } from "react-router-dom";
-import { supabase } from "./utils/supabase.js";
-import Login from "./pages/Login.jsx";
-import Landing from "./pages/Landing.jsx";
-import Notfound from "./pages/Notfound.jsx";
-import Dashboard from "./pages/Dashboard.jsx";
-import StaffDashboard from "./pages/StaffDashboard.jsx";
-import MeetingDashboard from "./pages/MeetingDashboard.jsx";
+import { Routes, Route, useLocation } from "react-router-dom";
+import { supabase } from "./utils/supabase";
+
+import Login from "./pages/Login";
+import Landing from "./pages/Landing";
+import Dashboard from "./pages/Dashboard";
+import StaffDashboard from "./pages/StaffDashboard";
+import MeetingDashboard from "./pages/MeetingDashboard";
+import Notfound from "./pages/Notfound";
+
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleRoute from "./components/RoleRoute";
 
 import toast from "react-hot-toast";
 
+// -----------------------------------------
+// Notification helpers
+// -----------------------------------------
 function playNotificationSound() {
-  // your sound logic
   const audio = new Audio("/notification.mp3");
-  audio.play().catch(() => {});
+  audio.play().catch(() => { });
 }
+
 function showToast(title, body) {
-  // replace with your toast lib (react-hot-toast / chakra / etc.)
-  toast.success(`${title}\n\n${body}`);
+  toast.success(`${title}\n${body}`);
 }
 
-function App() {
+// -----------------------------------------
+// Meeting wrapper → uses ?staffId=
+// -----------------------------------------
+function MeetingDashboardWrapper() {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const staffId = params.get("staffId");
+
+  return <MeetingDashboard staffId={staffId} />;
+}
+
+// -----------------------------------------
+// Main App
+// -----------------------------------------
+export default function App() {
   const [user, setUser] = useState(null);
+  const [staffId, setStaffId] = useState(null);
 
-  // get initial user & listen for auth changes
+  // ------------------------------
+  // Auth session listener
+  // ------------------------------
   useEffect(() => {
-    let mounted = true;
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data?.user ?? null);
+    });
 
-    async function fetchUser() {
-      // Supabase JS v2:
-      const {
-        data: { user: currentUser },
-      } = await supabase.auth.getUser();
-      // If using v1 you may need: const currentUser = supabase.auth.user();
-      if (mounted) setUser(currentUser);
-    }
-    fetchUser();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user ?? null);
-      }
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => setUser(session?.user ?? null)
     );
 
-    return () => {
-      mounted = false;
-      if (authListener?.subscription) authListener.subscription.unsubscribe?.();
-    };
+    return () => listener.subscription.unsubscribe();
   }, []);
 
-  // notification realtime subscription — runs when user becomes available
+  // ------------------------------
+  // Fetch staff table → staff.id
+  // ------------------------------
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setStaffId(null);
+      return;
+    }
 
-    console.log(user.id);
+    const loadStaff = async () => {
+      const { data } = await supabase
+        .from("staff")
+        .select("id")
+        .eq("profile_id", user.id)
+        .single();
+
+      setStaffId(data?.id ?? null);
+    };
+
+    loadStaff();
+  }, [user?.id]);
+
+  // ------------------------------
+  // Real-time notifications
+  // ------------------------------
+  useEffect(() => {
+    if (!staffId) return;
 
     const channel = supabase
-      .channel("staff_notifications") // name can be anything; filter ensures per-user events
+      .channel(`notification_${staffId}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
-          schema: "public",
           table: "notifications",
-          filter: `staff_id=eq.${user.id}`,
+          schema: "public",
+          filter: `staff_id=eq.${staffId}`,
         },
         (payload) => {
           playNotificationSound();
@@ -74,50 +104,54 @@ function App() {
       )
       .subscribe();
 
-    return () => {
-      // remove the channel subscription on logout/unmount
-      try {
-        supabase.removeChannel(channel);
-      } catch (err) {
-        // fallback if removeChannel not available
-        channel.unsubscribe?.();
-      }
-    };
-  }, [user?.id]);
+    return () => supabase.removeChannel(channel);
+  }, [staffId]);
 
-
-  // // DEV: log all notification inserts for testing
-  // useEffect(() => {
-  //   const channel = supabase
-  //     .channel("dev_notif_watch")
-  //     .on(
-  //       "postgres_changes",
-  //       { event: "INSERT", schema: "public", table: "notifications" },
-  //       (payload) => {
-  //         console.log("DEV NOTIF PAYLOAD:", payload); // see full payload
-  //       }
-  //     )
-  //     .subscribe();
-
-  //   return () => supabase.removeChannel(channel);
-  // }, []);
-
-
+  // ------------------------------
+  // Routes
+  // ------------------------------
   return (
     <>
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
 
-        <Route path="/dashboard" element={<Dashboard />} />
+        {/* Student/Admin Dashboard */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
 
-        <Route path="/staffdashboard" element={<StaffDashboard />} />
+        {/* Staff Dashboard */}
+        <Route
+          path="/staffdashboard"
+          element={
+            <ProtectedRoute>
+              <RoleRoute allow={["staff"]}>
+                <StaffDashboard />
+              </RoleRoute>
+            </ProtectedRoute>
+          }
+        />
 
-        <Route path="/meetings" element={<MeetingDashboard staffId={user?.id} />} />
+        {/* Meetings page (requires staffId) */}
+        <Route
+          path="/meetings"
+          element={
+            <ProtectedRoute>
+              <RoleRoute allow={["staff"]}>
+                <MeetingDashboardWrapper />
+              </RoleRoute>
+            </ProtectedRoute>
+          }
+        />
+
         <Route path="/*" element={<Notfound />} />
       </Routes>
     </>
   );
 }
-
-export default App;

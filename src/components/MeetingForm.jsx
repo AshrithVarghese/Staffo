@@ -18,21 +18,27 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
 
-  const loadStaff = async () => {
-    const { data, error } = await supabase
-      .from("staff")
-      .select("id, name, dept, photo_url");
-
-    if (error) console.error(error);
-
-    setStaffList(data || []);
-  };
-
+  // -----------------------------------------------------
+  // Load staff (id, name, dept, photo_url)
+  // -----------------------------------------------------
   useEffect(() => {
+    const loadStaff = async () => {
+      const { data, error } = await supabase
+        .from("staff")
+        .select("id, name, dept, photo_url")
+        .order("name");
+
+      if (error) console.error(error);
+
+      setStaffList(data || []);
+    };
+
     loadStaff();
   }, []);
 
-  // load participants for editing
+  // -----------------------------------------------------
+  // Load selected participants when editing
+  // -----------------------------------------------------
   useEffect(() => {
     if (!meeting) {
       setSelected([]);
@@ -47,21 +53,21 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
 
       if (error) {
         console.error("Failed to load participants:", error);
-        setSelected([]);
         return;
       }
 
-      setSelected(data?.map((x) => x.staff_id) || []);
+      setSelected(data.map(x => x.staff_id));
     };
 
     loadParticipants();
   }, [meeting]);
 
-  // FILTER + SEARCH
+  // -----------------------------------------------------
+  // Search & filter staff
+  // -----------------------------------------------------
   const filteredStaff = useMemo(() => {
     const q = search.toLowerCase();
-
-    return staffList.filter((s) => {
+    return staffList.filter(s => {
       const matchDept = filter === "All" ? true : s.dept === filter;
       const matchSearch =
         s.name.toLowerCase().includes(q) ||
@@ -71,27 +77,33 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
     });
   }, [staffList, filter, search]);
 
-  const toggleStaff = (id) => {
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+  const toggleStaff = id => {
+    setSelected(prev =>
+      prev.includes(id)
+        ? prev.filter(x => x !== id)
+        : [...prev, id]
     );
   };
 
-  // SAVE
+  // -----------------------------------------------------
+  // SAVE MEETING (create or update)
+  // -----------------------------------------------------
   const save = async () => {
     if (!title || !date || !start || !end || !location || selected.length === 0) {
-      alert("All fields required!");
+      alert("All fields are required.");
       return;
     }
 
     let meetingId = meeting?.id;
 
+    // -----------------------------------------------------
+    // CREATE MEETING
+    // -----------------------------------------------------
     if (!meeting) {
-      // CREATE MEETING
       const { data, error } = await supabase
         .from("meetings")
         .insert({
-          host_staff_id: staffId, // <= using staff.id only
+          host_staff_id: staffId,        // Correct FK → staff.id
           title,
           description: desc,
           meeting_date: date,
@@ -99,18 +111,21 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
           end_time: end,
           location,
         })
-        .select();
-
-      console.log("Insert:", { data, error });
+        .select()
+        .single();
 
       if (error) {
         alert("Insert error: " + error.message);
         return;
       }
 
-      meetingId = data[0].id;
-    } else {
-      // UPDATE MEETING
+      meetingId = data.id;
+    }
+
+    // -----------------------------------------------------
+    // UPDATE MEETING
+    // -----------------------------------------------------
+    else {
       const { error } = await supabase
         .from("meetings")
         .update({
@@ -129,39 +144,39 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
       }
     }
 
-    // REMOVE OLD PARTICIPANTS
-    const { error: delErr } = await supabase
+    // -----------------------------------------------------
+    // DELETE OLD PARTICIPANTS
+    // -----------------------------------------------------
+    await supabase
       .from("meeting_participants")
       .delete()
       .eq("meeting_id", meetingId);
 
-    if (delErr) {
-      console.error("Failed to delete old participants:", delErr);
-      alert("Failed to save participants");
-      return;
-    }
-
-    // INSERT NEW PARTICIPANTS (this will trigger notifications via DB trigger)
-    const rows = selected.map((sid) => ({
+    // -----------------------------------------------------
+    // INSERT NEW PARTICIPANTS → triggers notifications
+    // -----------------------------------------------------
+    const participantRows = selected.map(sid => ({
       meeting_id: meetingId,
-      staff_id: sid, // <= important: staff_id is used for trigger and notification
+      staff_id: sid,
     }));
 
     const { error: insertErr } = await supabase
       .from("meeting_participants")
-      .insert(rows);
+      .insert(participantRows);
 
     if (insertErr) {
-      console.error("Failed to insert participants:", insertErr);
+      console.error("Participant insert error:", insertErr);
       alert("Failed to save participants");
       return;
     }
 
-    // DO NOT insert into notifications here — DB trigger (meeting_participants -> notifications) handles it
     alert("Meeting saved!");
     onClose();
   };
 
+  // -----------------------------------------------------
+  // RENDER UI
+  // -----------------------------------------------------
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 overflow-y-auto p-5">
       <div className="bg-white w-full max-w-lg p-6 rounded-2xl shadow space-y-5 my-8">
@@ -169,25 +184,26 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
           {meeting ? "Edit Meeting" : "New Meeting"}
         </h2>
 
+        {/* Inputs */}
         <input
           type="text"
           placeholder="Meeting Title"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={e => setTitle(e.target.value)}
           className="w-full px-4 py-3 border rounded-xl bg-gray-50"
         />
 
         <textarea
           placeholder="Description"
           value={desc}
-          onChange={(e) => setDesc(e.target.value)}
+          onChange={e => setDesc(e.target.value)}
           className="w-full px-4 py-3 border rounded-xl bg-gray-50"
         />
 
         <input
           type="date"
           value={date}
-          onChange={(e) => setDate(e.target.value)}
+          onChange={e => setDate(e.target.value)}
           className="w-full px-4 py-3 border rounded-xl bg-gray-50"
         />
 
@@ -195,13 +211,13 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
           <input
             type="time"
             value={start}
-            onChange={(e) => setStart(e.target.value)}
+            onChange={e => setStart(e.target.value)}
             className="w-full px-4 py-3 border rounded-xl bg-gray-50"
           />
           <input
             type="time"
             value={end}
-            onChange={(e) => setEnd(e.target.value)}
+            onChange={e => setEnd(e.target.value)}
             className="w-full px-4 py-3 border rounded-xl bg-gray-50"
           />
         </div>
@@ -210,22 +226,23 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
           type="text"
           placeholder="Location"
           value={location}
-          onChange={(e) => setLocation(e.target.value)}
+          onChange={e => setLocation(e.target.value)}
           className="w-full px-4 py-3 border rounded-xl bg-gray-50"
         />
 
+        {/* Search + Filter */}
         <div className="relative">
           <MagnifyingGlass size={20} className="absolute left-3 top-3 text-gray-500" />
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={e => setSearch(e.target.value)}
             placeholder="Search staff..."
             className="w-full pl-10 pr-4 py-3 border rounded-xl bg-gray-50"
           />
         </div>
 
-        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
-          {FILTERS.map((f) => (
+        <div className="flex gap-3 overflow-x-auto pb-2">
+          {FILTERS.map(f => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -237,8 +254,9 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
           ))}
         </div>
 
+        {/* Staff list */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-72 overflow-y-auto">
-          {filteredStaff.map((s) => (
+          {filteredStaff.map(s => (
             <button
               key={s.id}
               onClick={() => toggleStaff(s.id)}
@@ -259,11 +277,9 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
           ))}
         </div>
 
+        {/* Footer buttons */}
         <div className="flex justify-between mt-4">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-gray-300"
-          >
+          <button onClick={onClose} className="px-4 py-2 rounded-xl bg-gray-300">
             Cancel
           </button>
 

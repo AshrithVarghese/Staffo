@@ -4,13 +4,15 @@ import { supabase } from "../utils/supabase";
 
 export default function RoleRoute({ children, allow }) {
   const [loading, setLoading] = useState(true);
-  const [allowed, setAllowed] = useState(false);
+  const [ok, setOk] = useState(false);
 
   useEffect(() => {
     const check = async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData?.user) {
-        setAllowed(false);
+      const { data } = await supabase.auth.getUser();
+      const user = data?.user;
+
+      if (!user) {
+        setOk(false);
         setLoading(false);
         return;
       }
@@ -18,13 +20,13 @@ export default function RoleRoute({ children, allow }) {
       const { data: profile } = await supabase
         .from("profiles")
         .select("role")
-        .eq("id", userData.user.id)
+        .eq("id", user.id)
         .single();
 
       if (!profile) {
-        setAllowed(false);
+        setOk(false);
       } else {
-        setAllowed(allow.includes(profile.role));
+        setOk(allow.includes(profile.role));
       }
 
       setLoading(false);
@@ -34,9 +36,7 @@ export default function RoleRoute({ children, allow }) {
   }, [allow]);
 
   if (loading) return null;
-
-  if (!allowed) return <Navigate to="/dashboard" replace />;
+  if (!ok) return <Navigate to="/dashboard" replace />;
 
   return children;
 }
-
