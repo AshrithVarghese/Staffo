@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../utils/supabase";
 
-const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 export default function Timetable({ staffId, onClose }) {
   const [entries, setEntries] = useState({});
@@ -20,7 +20,6 @@ export default function Timetable({ staffId, onClose }) {
         return;
       }
 
-      // Convert array → structured data
       const grouped = {};
       DAYS.forEach((d) => (grouped[d] = []));
 
@@ -47,16 +46,24 @@ export default function Timetable({ staffId, onClose }) {
   };
 
   const updateSlot = (day, index, field, value) => {
-    const copy = { ...entries };
-    copy[day][index][field] = value;
-    setEntries(copy);
+    setEntries((prev) => {
+      const clone = structuredClone(prev);
+      clone[day][index][field] = value;
+      return clone;
+    });
+  };
+
+  const deleteSlot = (day, index) => {
+    setEntries((prev) => {
+      const clone = structuredClone(prev);
+      clone[day].splice(index, 1);
+      return clone;
+    });
   };
 
   const saveAll = async () => {
-    // Clear existing data
     await supabase.from("timetable").delete().eq("staff_id", staffId);
 
-    // Reinsert all
     for (const day of DAYS) {
       for (const slot of entries[day]) {
         if (!slot.start_time || !slot.end_time) continue;
@@ -94,8 +101,17 @@ export default function Timetable({ staffId, onClose }) {
             {expanded[day] && (
               <div className="mt-3 space-y-3">
                 {entries[day].map((slot, idx) => (
-                  <div key={idx} className="border p-3 rounded-xl">
-                    <div className="grid grid-cols-2 gap-3 grid-flow-col">
+                  <div key={idx} className="border p-3 rounded-xl relative">
+
+                    {/* Delete Button */}
+                    <button
+                      onClick={() => deleteSlot(day, idx)}
+                      className="absolute top-2 right-2 text-red-600 font-bold text-sm"
+                    >
+                      ✕
+                    </button>
+
+                    <div className="grid grid-cols-2 gap-3">
                       <input
                         type="time"
                         value={slot.start_time}
