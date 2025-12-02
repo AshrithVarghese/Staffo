@@ -208,26 +208,38 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
             className="w-full px-4 py-3 border rounded-xl bg-gray-50"
           />
 
-          <input
-            type="date"
-            value={date}
-            onChange={e => setDate(e.target.value)}
-            className="w-full px-4 py-3 border rounded-xl bg-gray-50"
-          />
+          <div>
+            <label htmlFor="date-input" className="block text-xs font-medium text-gray-700 mb-1">
+              Date
+            </label>
+            <input
+              id="date-input"
+              type="date"
+              value={date}
+              onChange={e => setDate(e.target.value)}
+              className="w-full px-4 py-3 border rounded-xl bg-gray-50"
+            />
+          </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
-            <input
-              type="time"
-              value={start}
-              onChange={e => setStart(e.target.value)}
-              className="w-full px-4 py-3 border rounded-xl bg-gray-50"
-            />
-            <input
-              type="time"
-              value={end}
-              onChange={e => setEnd(e.target.value)}
-              className="w-full px-4 py-3 border rounded-xl bg-gray-50"
-            />
+            <div className="w-full">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Start Time</label>
+              <input
+                type="time"
+                value={start}
+                onChange={e => setStart(e.target.value)}
+                className="w-full px-4 py-3 border rounded-xl bg-gray-50"
+              />
+            </div>
+            <div className="w-full">
+              <label className="block text-xs font-medium text-gray-700 mb-1">End Time</label>
+              <input
+                type="time"
+                value={end}
+                onChange={e => setEnd(e.target.value)}
+                className="w-full px-4 py-3 border rounded-xl bg-gray-50"
+              />
+            </div>
           </div>
 
           <input
@@ -270,8 +282,8 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
                 key={s.id}
                 onClick={() => toggleStaff(s.id)}
                 className={`flex items-center gap-3 p-3 border rounded-xl ${selected.includes(s.id)
-                    ? "bg-gray-100 border-black"
-                    : "bg-white border-gray-200"
+                  ? "bg-gray-100 border-black"
+                  : "bg-white border-gray-200"
                   }`}
                 type="button"
               >
