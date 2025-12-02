@@ -1,29 +1,73 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../utils/supabase.js";
+import { supabase } from "../utils/supabase";
 import toast from "react-hot-toast";
 
 export default function Login() {
-  const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loginAsStaff, setLoginAsStaff] = useState(false);
 
+  // --------------------------
+  // Fetch role
+  // --------------------------
+  const fetchUserRole = async (userId) => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .single();
+
+    if (error) {
+      console.error("Profile fetch error:", error);
+      return null;
+    }
+
+    return data?.role ?? null;
+  };
+
+  // --------------------------
+  // Redirect
+  // --------------------------
+  const redirectByRole = (role) => {
+    if (role === "staff") {
+      window.location.href = "/staffdashboard";
+    } else {
+      window.location.href = "/dashboard";
+    }
+  };
+
+  // --------------------------
+  // OAuth callback
+  // --------------------------
   useEffect(() => {
-    const hash = window.location.hash;
-    if (hash.includes("error")) {
+    const params = new URLSearchParams(window.location.search);
+
+    // Supabase sends ?error=access_denied etc
+    if (params.get("error")) {
       toast.error("Only @jecc.ac.in emails are allowed");
-      window.history.replaceState({}, document.title, "/login");
+      return;
+    }
+
+    // When returning from Google OAuth
+    if (params.get("redirect") === "1") {
+      supabase.auth.getUser().then(async ({ data, error }) => {
+        if (error || !data?.user) return;
+
+        const role = await fetchUserRole(data.user.id);
+        redirectByRole(role);
+      });
     }
   }, []);
 
+  // --------------------------
+  // Google Login
+  // --------------------------
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: window.location.origin + "/dashboard",
-        queryParams: { hd: "jecc.ac.in" }, // domain hint
+        redirectTo: `${window.location.origin}/login?redirect=1`,
+        queryParams: { hd: "jecc.ac.in" }, // restrict to domain
       },
     });
 
@@ -33,42 +77,8 @@ export default function Login() {
     }
   };
 
-  const handleEmailLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    if (!email || !password) {
-      toast.error("Email and password are required");
-      setLoading(false);
-      return;
-    }
-
-    // optional: enforce jecc domain on email
-    if (!email.endsWith("@jecc.ac.in")) {
-      toast.error("Only @jecc.ac.in emails are allowed");
-      setLoading(false);
-      return;
-    }
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      toast.error(error.message || "Login failed");
-      setLoading(false);
-      return;
-    }
-
-    toast.success("Signed in");
-    setLoading(false);
-    // optionally redirect here
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 relative">
-
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center">
           <img
@@ -81,13 +91,16 @@ export default function Login() {
         </div>
 
         <div className="bg-white mt-6 shadow-md rounded-2xl p-6">
-
           <button
             onClick={handleGoogleLogin}
             disabled={googleLoading}
-            className=" w-full py-3 rounded-xl border border-gray-200 flex items-center justify-center gap-3 bg-white hover:shadow transition disabled:opacity-60"
+            className="w-full py-3 rounded-xl border border-gray-200 flex items-center justify-center gap-3 bg-white hover:shadow transition disabled:opacity-60"
           >
-            <img src="https://www.w3schools.com/whatis/img_google.jpg" alt="google" className="w-5 h-5" />
+            <img
+              src="https://www.w3schools.com/whatis/img_google.jpg"
+              alt="google"
+              className="w-5 h-5"
+            />
             <span className="text-sm text-gray-700">
               {googleLoading ? "Please wait..." : "Continue with Google"}
             </span>
