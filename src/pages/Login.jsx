@@ -5,15 +5,9 @@ import toast from "react-hot-toast";
 export default function Login() {
   const [googleLoading, setGoogleLoading] = useState(false);
 
-<<<<<<< HEAD
   // ---------------------------
-  // Get role from profiles table
+  // Fetch user's role
   // ---------------------------
-=======
-  // --------------------------
-  // Fetch role
-  // --------------------------
->>>>>>> bd6cebc2a762412a46b50419ef3b30cdced6e2e9
   const fetchUserRole = async (userId) => {
     const { data, error } = await supabase
       .from("profiles")
@@ -29,70 +23,45 @@ export default function Login() {
     return data?.role ?? null;
   };
 
-<<<<<<< HEAD
   // ---------------------------
-  // Redirect based on role
+  // Redirect by role
   // ---------------------------
-=======
-  // --------------------------
-  // Redirect
-  // --------------------------
->>>>>>> bd6cebc2a762412a46b50419ef3b30cdced6e2e9
   const redirectByRole = (role) => {
     if (role === "staff") window.location.href = "/staffdashboard";
     else window.location.href = "/dashboard";
   };
 
-<<<<<<< HEAD
   // ---------------------------
   // OAuth callback handler
   // ---------------------------
   useEffect(() => {
     const handleOAuthCallback = async () => {
-      // Supabase will automatically extract the hash (#access_token...)
       const { data: sessionData } = await supabase.auth.getSession();
+      const session = sessionData?.session;
 
-      // If user isn't logged in yet → do nothing
-      if (!sessionData?.session) return;
+      // Not logged in yet (first page load)
+      if (!session) return;
 
-      const user = sessionData.session.user;
+      const user = session.user;
       if (!user) return;
 
-      // Now fetch the role
-      const role = await fetchUserRole(user.id);
+      // Validate domain
+      if (!user.email.endsWith("@jecc.ac.in")) {
+        await supabase.auth.signOut();
+        toast.error("Only @jecc.ac.in emails are allowed");
+        return;
+      }
 
-      // Redirect dashboards
+      // Fetch role → redirect
+      const role = await fetchUserRole(user.id);
       redirectByRole(role);
     };
 
     handleOAuthCallback();
-=======
-  // --------------------------
-  // OAuth callback
-  // --------------------------
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-
-    // Supabase sends ?error=access_denied etc
-    if (params.get("error")) {
-      toast.error("Only @jecc.ac.in emails are allowed");
-      return;
-    }
-
-    // When returning from Google OAuth
-    if (params.get("redirect") === "1") {
-      supabase.auth.getUser().then(async ({ data, error }) => {
-        if (error || !data?.user) return;
-
-        const role = await fetchUserRole(data.user.id);
-        redirectByRole(role);
-      });
-    }
->>>>>>> bd6cebc2a762412a46b50419ef3b30cdced6e2e9
   }, []);
 
   // ---------------------------
-  // Google Sign In
+  // Google Login
   // ---------------------------
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
@@ -100,13 +69,8 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-<<<<<<< HEAD
-        redirectTo: `${window.location.origin}/login`, // very important
-        queryParams: { hd: "jecc.ac.in" },              // restrict domain
-=======
-        redirectTo: `${window.location.origin}/login?redirect=1`,
-        queryParams: { hd: "jecc.ac.in" }, // restrict to domain
->>>>>>> bd6cebc2a762412a46b50419ef3b30cdced6e2e9
+        redirectTo: `${window.location.origin}/login`, // correct callback
+        queryParams: { hd: "jecc.ac.in" },
       },
     });
 
@@ -116,12 +80,9 @@ export default function Login() {
     }
   };
 
-<<<<<<< HEAD
   // ---------------------------
   // UI
   // ---------------------------
-=======
->>>>>>> bd6cebc2a762412a46b50419ef3b30cdced6e2e9
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 relative">
       <div className="w-full max-w-sm">
@@ -143,7 +104,7 @@ export default function Login() {
           >
             <img
               src="https://www.w3schools.com/whatis/img_google.jpg"
-              alt="google"
+              alt="Google Logo"
               className="w-5 h-5"
             />
             <span className="text-sm text-gray-700">
