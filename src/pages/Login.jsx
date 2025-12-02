@@ -1,16 +1,13 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../utils/supabase.js";
+import { supabase } from "../utils/supabase";
 import toast from "react-hot-toast";
 
 export default function Login() {
-  const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
 
-  // --------------------------
-  // Fetch the user's role
-  // --------------------------
+  // ---------------------------
+  // Get role from profiles table
+  // ---------------------------
   const fetchUserRole = async (userId) => {
     const { data, error } = await supabase
       .from("profiles")
@@ -19,62 +16,56 @@ export default function Login() {
       .single();
 
     if (error) {
-      console.error("Profile fetch error:", error);
+      console.error("Error fetching role:", error);
       return null;
     }
 
     return data?.role || null;
   };
 
-  // --------------------------
+  // ---------------------------
   // Redirect based on role
-  // --------------------------
+  // ---------------------------
   const redirectByRole = (role) => {
-    if (role === "staff") {
-      window.location.href = "/staffdashboard";
-    } else {
-      window.location.href = "/dashboard";
-    }
+    if (role === "staff") window.location.href = "/staffdashboard";
+    else window.location.href = "/dashboard";
   };
 
-  // --------------------------
-  // Handle OAuth callback
-  // --------------------------
+  // ---------------------------
+  // OAuth callback handler
+  // ---------------------------
   useEffect(() => {
-    const hash = window.location.hash;
+    const handleOAuthCallback = async () => {
+      // Supabase will automatically extract the hash (#access_token...)
+      const { data: sessionData } = await supabase.auth.getSession();
 
-    // OAuth error
-    if (hash.includes("error")) {
-      toast.error("Only @jecc.ac.in emails are allowed");
-      window.history.replaceState({}, document.title, "/login");
-      return;
-    }
+      // If user isn't logged in yet → do nothing
+      if (!sessionData?.session) return;
 
-    // OAuth success — only when ?redirect=1 is present
-    if (window.location.search.includes("redirect=1")) {
-      supabase.auth.getUser().then(async ({ data, error }) => {
-        if (error || !data?.user) return;
+      const user = sessionData.session.user;
+      if (!user) return;
 
-        const role = await fetchUserRole(data.user.id);
-        redirectByRole(role);
-      });
+      // Now fetch the role
+      const role = await fetchUserRole(user.id);
 
-      // Clean URL
-      window.history.replaceState({}, "", "/login");
-    }
+      // Redirect dashboards
+      redirectByRole(role);
+    };
+
+    handleOAuthCallback();
   }, []);
 
-  // --------------------------
-  // Google Login
-  // --------------------------
-  const handleGoogleLogin = async () => {
+  // ---------------------------
+  // Google Sign In
+  // ---------------------------
+  const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: window.location.origin + "/login?redirect=1",
-        queryParams: { hd: "jecc.ac.in" },
+        redirectTo: `${window.location.origin}/login`, // very important
+        queryParams: { hd: "jecc.ac.in" },              // restrict domain
       },
     });
 
@@ -84,47 +75,9 @@ export default function Login() {
     }
   };
 
-  // --------------------------
-  // Email Login
-  // --------------------------
-  const handleEmailLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    if (!email || !password) {
-      toast.error("Email and password are required");
-      setLoading(false);
-      return;
-    }
-
-    if (!email.endsWith("@jecc.ac.in")) {
-      toast.error("Only @jecc.ac.in emails are allowed");
-      setLoading(false);
-      return;
-    }
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      toast.error(error.message || "Login failed");
-      setLoading(false);
-      return;
-    }
-
-    toast.success("Signed in");
-
-    // Fetch role and redirect
-    const role = await fetchUserRole(data.user.id);
-    setLoading(false);
-    redirectByRole(role);
-  };
-
-  // --------------------------
+  // ---------------------------
   // UI
-  // --------------------------
+  // ---------------------------
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 relative">
       <div className="w-full max-w-sm">
@@ -135,12 +88,12 @@ export default function Login() {
             className="w-50 rounded-full absolute top-45"
           />
           <h2 className="text-2xl font-semibold mt-1">Welcome to Staffo</h2>
-          <p className="text-gray-500 text-sm mt-1">Sign in to your account</p>
+          <p className="text-gray-500 text-sm mt-1">Sign in with your JECC account</p>
         </div>
 
         <div className="bg-white mt-6 shadow-md rounded-2xl p-6">
           <button
-            onClick={handleGoogleLogin}
+            onClick={handleGoogleSignIn}
             disabled={googleLoading}
             className="w-full py-3 rounded-xl border border-gray-200 flex items-center justify-center gap-3 bg-white hover:shadow transition disabled:opacity-60"
           >
@@ -150,13 +103,13 @@ export default function Login() {
               className="w-5 h-5"
             />
             <span className="text-sm text-gray-700">
-              {googleLoading ? "Please wait..." : "Continue with Google"}
+              {googleLoading ? "Please wait…" : "Continue with Google"}
             </span>
           </button>
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-4">
-          *Sign in with your JECC account
+          * Only @jecc.ac.in accounts are accepted
         </p>
       </div>
     </div>

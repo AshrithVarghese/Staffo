@@ -16,14 +16,12 @@ export default function Dashboard() {
   const [q, setQ] = useState("");
   const [active, setActive] = useState("All");
   const [selected, setSelected] = useState(null);
-  const [staff, setStaff] = useState([]); // <— FETCHED FROM SUPABASE
+  const [staff, setStaff] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
     const load = async () => {
-      const { data, error } = await supabase
-        .from("staff")
-        .select("*");
+      const { data, error } = await supabase.from("staff").select("*");
 
       if (error) {
         console.error("Supabase error:", error);
@@ -32,7 +30,7 @@ export default function Dashboard() {
 
       const mapped = data.map((s) => ({
         ...s,
-        avatar: s.photo_url, // required by UI
+        avatar: s.photo_url,
       }));
 
       setStaff(mapped);
@@ -50,7 +48,8 @@ export default function Dashboard() {
         !qLower ||
         s.name?.toLowerCase().includes(qLower) ||
         s.dept?.toLowerCase().includes(qLower) ||
-        s.location?.toLowerCase().includes(qLower);
+        s.location?.toLowerCase().includes(qLower) ||
+        s.designation?.toLowerCase().includes(qLower);
 
       return matchFilter && matchQuery;
     });
@@ -132,7 +131,17 @@ export default function Dashboard() {
                 <div className="flex-1">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <div className="text-lg font-semibold text-gray-800 leading-tight">{s.name}</div>
+
+                      <div className="text-lg font-semibold text-gray-800 leading-tight">
+                        {s.name}
+                      </div>
+
+                      {s.designation && (
+                        <div className="text-sm text-gray-600">
+                          {s.designation}
+                        </div>
+                      )}
+
                       <div className="text-sm text-gray-500">{s.dept}</div>
                     </div>
 
@@ -168,6 +177,7 @@ export default function Dashboard() {
             dept: selected.dept,
             role: selected.role || "",
             avatar: selected.avatar,
+            designation: selected.designation || "",
             status: selected.status,
             statusLabel: STATUS_META[selected.status]?.label,
             location: selected.location,
