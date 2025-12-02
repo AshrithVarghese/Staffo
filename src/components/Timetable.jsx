@@ -76,7 +76,7 @@ export default function Timetable({ staffId, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-5">
       <div className="bg-white w-full max-w-lg rounded-2xl p-6 shadow overflow-y-auto max-h-[90vh]">
 
         <h2 className="text-xl font-semibold mb-4">Timetable</h2>

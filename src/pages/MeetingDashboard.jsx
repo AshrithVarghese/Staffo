@@ -9,12 +9,15 @@ export default function MeetingDashboard({ staffId }) {
   const [editingMeeting, setEditingMeeting] = useState(null);
   const [showForm, setShowForm] = useState(false);
 
+  // Load meetings hosted by this staff
   const loadMeetings = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("meetings")
       .select("*")
       .eq("host_staff_id", staffId)
       .order("meeting_date", { ascending: true });
+
+    if (error) console.error(error);
 
     setMeetings(data || []);
     setLoading(false);
@@ -28,6 +31,7 @@ export default function MeetingDashboard({ staffId }) {
 
   return (
     <div className="min-h-screen px-4 py-6 bg-gray-50">
+
       <header className="flex justify-between items-center mb-5">
         <h1 className="text-xl font-semibold">Meetings Dashboard</h1>
 
@@ -54,7 +58,7 @@ export default function MeetingDashboard({ staffId }) {
       {/* Meeting Form Modal */}
       {showForm && (
         <MeetingForm
-          staffId={staffId}
+          staffId={staffId}      // ✅ correct
           meeting={editingMeeting}
           onClose={() => {
             setShowForm(false);

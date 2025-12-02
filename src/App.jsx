@@ -18,11 +18,11 @@ function App() {
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute>
-              <RoleRoute allow={["student", "default", "staff"]}>
-                <Dashboard />
-              </RoleRoute>
-            </ProtectedRoute>
+            // <ProtectedRoute>
+            //   <RoleRoute allow={["student", "default", "staff"]}>
+            <Dashboard />
+            //   </RoleRoute>
+            // </ProtectedRoute>
           }
         />
 
@@ -30,14 +30,17 @@ function App() {
         <Route
           path="/staffdashboard"
           element={
-            <ProtectedRoute>
-              <RoleRoute allow={["staff"]}>
-                <StaffDashboard />
-              </RoleRoute>
-            </ProtectedRoute>
+            // <ProtectedRoute>
+            //   <RoleRoute allow={["staff"]}>
+            <StaffDashboard />
+            //   </RoleRoute>
+            // </ProtectedRoute>
           }
         />
-        <Route path="/meeting" element={<MeetingDashboard />} />
+        <Route
+          path="/meetings"
+          element={<MeetingDashboard />}
+        />
         <Route path="/*" element={<Notfound />} />
       </Routes>
     </>
