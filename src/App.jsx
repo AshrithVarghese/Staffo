@@ -6,7 +6,7 @@ import Dashboard from './pages/Dashboard.jsx'
 import StaffDashboard from './pages/StaffDashboard.jsx'
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleRoute from "./components/RoleRoute";
-
+import MeetingDashboard from './pages/MeetingDashboard.jsx'
 function App() {
   return (
     <>
@@ -37,7 +37,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-
+        <Route path="/meeting" element={<MeetingDashboard />} />
         <Route path="/*" element={<Notfound />} />
       </Routes>
     </>
