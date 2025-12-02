@@ -6,7 +6,7 @@ import Dashboard from './pages/Dashboard.jsx'
 import StaffDashboard from './pages/StaffDashboard.jsx'
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleRoute from "./components/RoleRoute";
-
+import MeetingDashboard from './pages/MeetingDashboard.jsx'
 function App() {
   return (
     <>
@@ -20,7 +20,7 @@ function App() {
           element={
             // <ProtectedRoute>
             //   <RoleRoute allow={["student", "default", "staff"]}>
-                <Dashboard />
+            <Dashboard />
             //   </RoleRoute>
             // </ProtectedRoute>
           }
@@ -32,12 +32,15 @@ function App() {
           element={
             // <ProtectedRoute>
             //   <RoleRoute allow={["staff"]}>
-                <StaffDashboard />
+            <StaffDashboard />
             //   </RoleRoute>
             // </ProtectedRoute>
           }
         />
-
+        <Route
+          path="/meetings"
+          element={<MeetingDashboard />}
+        />
         <Route path="/*" element={<Notfound />} />
       </Routes>
     </>

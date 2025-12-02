@@ -71,7 +71,7 @@ export default function Dashboard() {
           />
         </div>
 
-        <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center" onClick={()=>{navigate('/staffdashboard')}}>
+        <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center" onClick={() => { navigate('/staffdashboard') }}>
           <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
             <circle cx="12" cy="8" r="3" />
             <path d="M4 20c0-4 4-6 8-6s8 2 8 6" />
@@ -127,7 +127,7 @@ export default function Dashboard() {
                   onError={(e) => (e.currentTarget.src = "https://via.placeholder.com/64")}
                   className="w-22 h-22 rounded-full object-cover shrink-0"
                 />
-                <img src="/bluetick.png" alt="verified" className="w-6 absolute ml-16 mt-15"/>
+                <img src="/bluetick.png" alt="verified" className="w-6 absolute ml-16 mt-15" />
 
                 <div className="flex-1">
                   <div className="flex items-start justify-between gap-4">
