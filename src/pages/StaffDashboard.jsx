@@ -132,7 +132,7 @@ export default function StaffDashboard() {
   // ----------------------------------------------------------------
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 pb-10 pt-6">
+    <div className="min-h-screen bg-gray-50 px-4 pb-10 pt-6 mb-20">
 
       {showDpUploader && (
         <PhotoUploader
@@ -189,12 +189,12 @@ export default function StaffDashboard() {
           </div>
         </div>
 
-        <div className="flex flex-row justify-around">
-          <div className="bg-white text-black border rounded-full px-6 py-2 flex items-center gap-1 cursor-pointer" onClick={()=>setShowSetup(true)}>
+        <div className="flex flex-col md:flex-row gap-2 justify-evenly">
+          <div className="bg-white text-black border rounded-full px-3 py-1 flex items-center gap-1 cursor-pointer" onClick={()=>setShowSetup(true)}>
             <PencilSimple size={20} />
             <p>Edit Details</p>
           </div>
-          <div className="bg-white text-black border rounded-full px-6 py-2 flex items-center gap-1 cursor-pointer" onClick={()=>navigate("/meetings")}>
+          <div className="bg-black text-white border rounded-full px-3 py-1 flex items-center gap-1 cursor-pointer" onClick={()=>navigate("/meetings")}>
             <CalendarCheck size={20} />
             <p>Your Meetings</p>
           </div>

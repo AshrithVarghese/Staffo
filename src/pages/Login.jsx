@@ -27,7 +27,7 @@ export default function Login() {
   // Redirect by role
   // ---------------------------
   const redirectByRole = (role) => {
-    if (role === "staff") window.location.href = "/staffdashboard";
+    if (role === "staff") window.location.href = "/dashboard";
     else window.location.href = "/dashboard";
   };
 

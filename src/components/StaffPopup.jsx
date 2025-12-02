@@ -34,6 +34,10 @@ export default function StaffPopup({ staff, onClose = () => { }, onViewMap = () 
         className="w-full max-w-md bg-white rounded-t-2xl md:rounded-2xl p-6 md:p-8 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
+
+        <button onClick={onClose} className="px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer absolute right-0">
+            Close
+        </button>
         {/* handle + close */}
         <div className="flex items-center justify-between mb-3 -mt-3">
           <div className="mx-auto w-24 h-1.5 rounded-full bg-gray-200" />
@@ -71,7 +75,7 @@ export default function StaffPopup({ staff, onClose = () => { }, onViewMap = () 
 
 
         {/* schedule */}
-        <div className="mt-6">
+        <div className="mt-6 mb-25">
           <h3 className="text-base font-semibold text-gray-800">Today's Schedule</h3>
           <div className="mt-3 space-y-4 pl-3 relative">
             {/* vertical line */}
@@ -90,12 +94,6 @@ export default function StaffPopup({ staff, onClose = () => { }, onViewMap = () 
           </div>
         </div>
 
-        {/* footer */}
-        <div className="mt-6 flex justify-end">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-100 cursor-pointer">
-            Close
-          </button>
-        </div>
       </div>
     </div>
   );
