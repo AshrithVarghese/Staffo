@@ -5,9 +5,15 @@ import toast from "react-hot-toast";
 export default function Login() {
   const [googleLoading, setGoogleLoading] = useState(false);
 
+<<<<<<< HEAD
   // ---------------------------
   // Get role from profiles table
   // ---------------------------
+=======
+  // --------------------------
+  // Fetch role
+  // --------------------------
+>>>>>>> bd6cebc2a762412a46b50419ef3b30cdced6e2e9
   const fetchUserRole = async (userId) => {
     const { data, error } = await supabase
       .from("profiles")
@@ -20,17 +26,24 @@ export default function Login() {
       return null;
     }
 
-    return data?.role || null;
+    return data?.role ?? null;
   };
 
+<<<<<<< HEAD
   // ---------------------------
   // Redirect based on role
   // ---------------------------
+=======
+  // --------------------------
+  // Redirect
+  // --------------------------
+>>>>>>> bd6cebc2a762412a46b50419ef3b30cdced6e2e9
   const redirectByRole = (role) => {
     if (role === "staff") window.location.href = "/staffdashboard";
     else window.location.href = "/dashboard";
   };
 
+<<<<<<< HEAD
   // ---------------------------
   // OAuth callback handler
   // ---------------------------
@@ -53,6 +66,29 @@ export default function Login() {
     };
 
     handleOAuthCallback();
+=======
+  // --------------------------
+  // OAuth callback
+  // --------------------------
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+
+    // Supabase sends ?error=access_denied etc
+    if (params.get("error")) {
+      toast.error("Only @jecc.ac.in emails are allowed");
+      return;
+    }
+
+    // When returning from Google OAuth
+    if (params.get("redirect") === "1") {
+      supabase.auth.getUser().then(async ({ data, error }) => {
+        if (error || !data?.user) return;
+
+        const role = await fetchUserRole(data.user.id);
+        redirectByRole(role);
+      });
+    }
+>>>>>>> bd6cebc2a762412a46b50419ef3b30cdced6e2e9
   }, []);
 
   // ---------------------------
@@ -64,8 +100,13 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
+<<<<<<< HEAD
         redirectTo: `${window.location.origin}/login`, // very important
         queryParams: { hd: "jecc.ac.in" },              // restrict domain
+=======
+        redirectTo: `${window.location.origin}/login?redirect=1`,
+        queryParams: { hd: "jecc.ac.in" }, // restrict to domain
+>>>>>>> bd6cebc2a762412a46b50419ef3b30cdced6e2e9
       },
     });
 
@@ -75,9 +116,12 @@ export default function Login() {
     }
   };
 
+<<<<<<< HEAD
   // ---------------------------
   // UI
   // ---------------------------
+=======
+>>>>>>> bd6cebc2a762412a46b50419ef3b30cdced6e2e9
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 relative">
       <div className="w-full max-w-sm">
