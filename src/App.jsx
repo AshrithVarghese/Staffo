@@ -8,6 +8,7 @@ import Dashboard from "./pages/Dashboard";
 import StaffDashboard from "./pages/StaffDashboard";
 import MeetingDashboard from "./pages/MeetingDashboard";
 import Notfound from "./pages/Notfound";
+import Availability from "./pages/Availability";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleRoute from "./components/RoleRoute";
@@ -23,7 +24,7 @@ function playNotificationSound() {
 }
 
 function showToast(title, body) {
-  toast.success(`${title}\n${body}` , { duration: 8000 });
+  toast.success(`${title}\n${body}`, { duration: 8000 });
 }
 
 // -----------------------------------------
@@ -145,6 +146,17 @@ export default function App() {
             <ProtectedRoute>
               <RoleRoute allow={["staff"]}>
                 <MeetingDashboardWrapper />
+              </RoleRoute>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/availability"
+          element={
+            <ProtectedRoute>
+              <RoleRoute allow={["staff"]}>
+                <Availability />
               </RoleRoute>
             </ProtectedRoute>
           }
