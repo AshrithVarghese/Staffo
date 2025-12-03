@@ -4,81 +4,74 @@ import { supabase } from "../utils/supabase";
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 export default function Timetable({ staffId, onClose }) {
-  const [entries, setEntries] = useState({});
+  const [data, setData] = useState(null); // whole row
   const [expanded, setExpanded] = useState({});
 
-  // Load timetable
+  // Load timetable (ONE row)
   useEffect(() => {
     const load = async () => {
       const { data, error } = await supabase
         .from("timetable")
         .select("*")
-        .eq("staff_id", staffId);
+        .eq("staff_id", staffId)
+        .single();
 
-      if (error) {
+      if (error && error.code !== "PGRST116") {
         console.error(error);
         return;
       }
 
-      const grouped = {};
-      DAYS.forEach((d) => (grouped[d] = []));
+      // If no row exists → create a blank one
+      if (!data) {
+        const blank = {
+          staff_id: staffId,
+          monday: Array(7).fill(""),
+          tuesday: Array(7).fill(""),
+          wednesday: Array(7).fill(""),
+          thursday: Array(7).fill(""),
+          friday: Array(7).fill(""),
+          saturday: Array(7).fill(""),
+        };
 
-      data.forEach((row) => {
-        grouped[row.day].push({
-          id: row.id,
-          start_time: row.start_time,
-          end_time: row.end_time,
-          place: row.place,
-        });
-      });
+        setData(blank);
+        await supabase.from("timetable").insert(blank);
+        return;
+      }
 
-      setEntries(grouped);
+      setData(data);
     };
 
     load();
   }, [staffId]);
 
-  const addSlot = (day) => {
-    setEntries((prev) => ({
+  if (!data)
+    return (
+      <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
+        <div className="bg-white p-6 rounded-xl">Loading…</div>
+      </div>
+    );
+
+  // Update slot
+  const updateSlot = (day, index, value) => {
+    setData((prev) => ({
       ...prev,
-      [day]: [...prev[day], { id: null, start_time: "", end_time: "", place: "" }],
+      [day]: prev[day].map((v, i) => (i === index ? value : v)),
     }));
   };
 
-  const updateSlot = (day, index, field, value) => {
-    setEntries((prev) => {
-      const clone = structuredClone(prev);
-      clone[day][index][field] = value;
-      return clone;
-    });
-  };
-
-  const deleteSlot = (day, index) => {
-    setEntries((prev) => {
-      const clone = structuredClone(prev);
-      clone[day].splice(index, 1);
-      return clone;
-    });
-  };
-
+  // Save whole row
   const saveAll = async () => {
-    await supabase.from("timetable").delete().eq("staff_id", staffId);
+    const payload = {
+      monday: data.monday,
+      tuesday: data.tuesday,
+      wednesday: data.wednesday,
+      thursday: data.thursday,
+      friday: data.friday,
+      saturday: data.saturday,
+      updated_at: new Date().toISOString(),
+    };
 
-    for (const day of DAYS) {
-      for (const slot of entries[day]) {
-        if (!slot.start_time || !slot.end_time) continue;
-
-        await supabase.from("timetable").insert({
-          staff_id: staffId,
-          day,
-          start_time: slot.start_time,
-          end_time: slot.end_time,
-          place: slot.place,
-          is_active: true,
-        });
-      }
-    }
-
+    await supabase.from("timetable").update(payload).eq("staff_id", staffId);
     onClose();
   };
 
@@ -88,64 +81,40 @@ export default function Timetable({ staffId, onClose }) {
 
         <h2 className="text-xl font-semibold mb-4">Timetable</h2>
 
-        {DAYS.map((day) => (
-          <div key={day} className="mb-4">
-            <button
-              onClick={() => setExpanded((prev) => ({ ...prev, [day]: !prev[day] }))}
-              className="w-full flex justify-between items-center py-3 px-4 bg-gray-100 rounded-xl"
-            >
-              <span className="font-medium">{day}</span>
-              <span>{expanded[day] ? "−" : "+"}</span>
-            </button>
+        {DAYS.map((day) => {
+          const key = day.toLowerCase();
+          return (
+            <div key={day} className="mb-4">
+              <button
+                onClick={() => setExpanded((prev) => ({ ...prev, [day]: !prev[day] }))}
+                className="w-full flex justify-between items-center py-3 px-4 bg-gray-100 rounded-xl"
+              >
+                <span className="font-medium">{day}</span>
+                <span>{expanded[day] ? "−" : "+"}</span>
+              </button>
 
-            {expanded[day] && (
-              <div className="mt-3 space-y-3">
-                {entries[day].map((slot, idx) => (
-                  <div key={idx} className="border p-3 rounded-xl relative">
+              {expanded[day] && (
+                <div className="mt-3 space-y-3">
+                  {data[key].map((slot, idx) => (
+                    <div key={idx} className="border p-3 rounded-xl">
+                      <div className="text-sm font-medium mb-2">
+                        Period {idx + 1}
+                      </div>
 
-                    {/* Delete Button */}
-                    <button
-                      onClick={() => deleteSlot(day, idx)}
-                      className="absolute top-2 right-2 text-red-600 font-bold text-sm"
-                    >
-                      ✕
-                    </button>
-
-                    <div className="grid grid-cols-2 gap-3">
                       <input
-                        type="time"
-                        value={slot.start_time}
-                        onChange={(e) => updateSlot(day, idx, "start_time", e.target.value)}
-                        className="border rounded-xl px-2 py-2"
-                      />
-                      <input
-                        type="time"
-                        value={slot.end_time}
-                        onChange={(e) => updateSlot(day, idx, "end_time", e.target.value)}
-                        className="border rounded-xl px-2 py-2"
+                        type="text"
+                        value={slot}
+                        onChange={(e) => updateSlot(key, idx, e.target.value)}
+                        placeholder="Room / Lab"
+                        className="border rounded-xl px-3 py-2 w-full"
                       />
                     </div>
-
-                    <input
-                      type="text"
-                      value={slot.place}
-                      onChange={(e) => updateSlot(day, idx, "place", e.target.value)}
-                      placeholder="Room / Lab"
-                      className="border rounded-xl px-3 py-2 w-full mt-2"
-                    />
-                  </div>
-                ))}
-
-                <button
-                  onClick={() => addSlot(day)}
-                  className="px-3 py-2 bg-black text-white rounded-xl text-sm"
-                >
-                  + Add Slot
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         <div className="flex justify-end mt-4">
           <button

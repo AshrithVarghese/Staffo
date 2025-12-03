@@ -13,13 +13,13 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
   const [location, setLocation] = useState(meeting?.location || "");
 
   const [staffList, setStaffList] = useState([]);
-  const [selected, setSelected] = useState([]);
+  const [selected, setSelected] = useState([]); // includes host ALWAYS
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
 
   // -----------------------------------------------------
-  // Load staff (id, name, dept, photo_url)
+  // Load staff
   // -----------------------------------------------------
   useEffect(() => {
     const loadStaff = async () => {
@@ -37,11 +37,12 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
   }, []);
 
   // -----------------------------------------------------
-  // Load selected participants when editing
+  // Load participants (edit mode)
   // -----------------------------------------------------
   useEffect(() => {
     if (!meeting) {
-      setSelected([]);
+      // NEW MEETING → host must be included by default
+      setSelected([staffId]);
       return;
     }
 
@@ -56,14 +57,19 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
         return;
       }
 
-      setSelected(data.map(x => x.staff_id));
+      let ids = data.map(x => x.staff_id);
+
+      // Make sure host is included
+      if (!ids.includes(staffId)) ids.push(staffId);
+
+      setSelected(ids);
     };
 
     loadParticipants();
-  }, [meeting]);
+  }, [meeting, staffId]);
 
   // -----------------------------------------------------
-  // Search & filter staff
+  // Filtered staff list
   // -----------------------------------------------------
   const filteredStaff = useMemo(() => {
     const q = search.toLowerCase();
@@ -77,7 +83,12 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
     });
   }, [staffList, filter, search]);
 
+  // -----------------------------------------------------
+  // Toggle participant (except host)
+  // -----------------------------------------------------
   const toggleStaff = id => {
+    if (id === staffId) return; // host cannot be removed
+
     setSelected(prev =>
       prev.includes(id)
         ? prev.filter(x => x !== id)
@@ -86,7 +97,7 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
   };
 
   // -----------------------------------------------------
-  // SAVE MEETING (create or update)
+  // SAVE MEETING
   // -----------------------------------------------------
   const save = async () => {
     if (!title || !date || !start || !end || !location || selected.length === 0) {
@@ -97,13 +108,13 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
     let meetingId = meeting?.id;
 
     // -----------------------------------------------------
-    // CREATE MEETING
+    // INSERT (new meeting)
     // -----------------------------------------------------
     if (!meeting) {
       const { data, error } = await supabase
         .from("meetings")
         .insert({
-          host_staff_id: staffId,        // Correct FK → staff.id
+          host_staff_id: staffId,
           title,
           description: desc,
           meeting_date: date,
@@ -123,7 +134,7 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
     }
 
     // -----------------------------------------------------
-    // UPDATE MEETING
+    // UPDATE (existing meeting)
     // -----------------------------------------------------
     else {
       const { error } = await supabase
@@ -145,15 +156,12 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
     }
 
     // -----------------------------------------------------
-    // DELETE OLD PARTICIPANTS
+    // REMOVE OLD PARTICIPANTS
     // -----------------------------------------------------
-    await supabase
-      .from("meeting_participants")
-      .delete()
-      .eq("meeting_id", meetingId);
+    await supabase.from("meeting_participants").delete().eq("meeting_id", meetingId);
 
     // -----------------------------------------------------
-    // INSERT NEW PARTICIPANTS → triggers notifications
+    // ADD NEW PARTICIPANTS (host included)
     // -----------------------------------------------------
     const participantRows = selected.map(sid => ({
       meeting_id: meetingId,
@@ -175,82 +183,47 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
   };
 
   // -----------------------------------------------------
-  // RENDER UI
+  // RENDER
   // -----------------------------------------------------
   return (
-    <div
-      className="fixed inset-0 bg-black/40 flex items-center justify-center z-200 p-5"
-      role="dialog"
-      aria-modal="true"
-    >
-      {/* Dialog: constrained height + internal scrolling so longer forms still look perfect */}
-      <div className="bg-white w-full max-w-lg rounded-2xl shadow space-y-5 my-8
-                      flex flex-col max-h-[90vh] overflow-hidden">
-        {/* Scrollable content */}
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-200 p-5">
+      <div className="bg-white w-full max-w-lg rounded-2xl shadow flex flex-col max-h-[90vh] overflow-hidden">
+
+        {/* Scrollable Content */}
         <div className="px-6 py-5 overflow-y-auto space-y-5">
+
           <h2 className="text-xl font-semibold mb-5">
             {meeting ? "Edit Meeting" : "New Meeting"}
           </h2>
 
           {/* Inputs */}
-          <input
-            type="text"
-            placeholder="Meeting Title"
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            className="w-full px-4 py-3 border rounded-xl bg-gray-50"
-          />
+          <input type="text" placeholder="Meeting Title"
+            value={title} onChange={e => setTitle(e.target.value)}
+            className="w-full px-4 py-3 border rounded-xl bg-gray-50" />
 
-          <textarea
-            placeholder="Description"
-            value={desc}
-            onChange={e => setDesc(e.target.value)}
-            className="w-full px-4 py-3 border rounded-xl bg-gray-50"
-          />
+          <textarea placeholder="Description"
+            value={desc} onChange={e => setDesc(e.target.value)}
+            className="w-full px-4 py-3 border rounded-xl bg-gray-50" />
 
-          <div>
-            <label htmlFor="date-input" className="block text-xs font-medium text-gray-700 mb-1">
-              Date
-            </label>
-            <input
-              id="date-input"
-              type="date"
-              value={date}
-              onChange={e => setDate(e.target.value)}
-              className="w-full px-4 py-3 border rounded-xl bg-gray-50"
-            />
+          <input type="date"
+            value={date} onChange={e => setDate(e.target.value)}
+            className="w-full px-4 py-3 border rounded-xl bg-gray-50" />
+
+          <div className="flex gap-3">
+            <input type="time"
+              value={start} onChange={e => setStart(e.target.value)}
+              className="w-full px-4 py-3 border rounded-xl bg-gray-50" />
+
+            <input type="time"
+              value={end} onChange={e => setEnd(e.target.value)}
+              className="w-full px-4 py-3 border rounded-xl bg-gray-50" />
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="w-full">
-              <label className="block text-xs font-medium text-gray-700 mb-1">Start Time</label>
-              <input
-                type="time"
-                value={start}
-                onChange={e => setStart(e.target.value)}
-                className="w-full px-4 py-3 border rounded-xl bg-gray-50"
-              />
-            </div>
-            <div className="w-full">
-              <label className="block text-xs font-medium text-gray-700 mb-1">End Time</label>
-              <input
-                type="time"
-                value={end}
-                onChange={e => setEnd(e.target.value)}
-                className="w-full px-4 py-3 border rounded-xl bg-gray-50"
-              />
-            </div>
-          </div>
+          <input type="text" placeholder="Location"
+            value={location} onChange={e => setLocation(e.target.value)}
+            className="w-full px-4 py-3 border rounded-xl bg-gray-50" />
 
-          <input
-            type="text"
-            placeholder="Location"
-            value={location}
-            onChange={e => setLocation(e.target.value)}
-            className="w-full px-4 py-3 border rounded-xl bg-gray-50"
-          />
-
-          {/* Search + Filter */}
+          {/* Search */}
           <div className="relative">
             <MagnifyingGlass size={20} className="absolute left-3 top-3 text-gray-500" />
             <input
@@ -261,57 +234,61 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
             />
           </div>
 
+          {/* Filters */}
           <div className="flex gap-3 overflow-x-auto pb-2">
             {FILTERS.map(f => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`px-3 py-1 rounded-full text-sm ${filter === f ? "bg-black text-white" : "bg-white border"
-                  }`}
-                type="button"
+                className={`px-3 py-1 rounded-full text-sm ${filter === f ? "bg-black text-white" : "bg-white border"}`}
               >
                 {f}
               </button>
             ))}
           </div>
 
-          {/* Staff list */}
+          {/* Staff List */}
+          <h3 className="text-sm font-medium text-gray-700 mt-3">Select Participants</h3>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-72 overflow-y-auto">
-            {filteredStaff.map(s => (
-              <button
-                key={s.id}
-                onClick={() => toggleStaff(s.id)}
-                className={`flex items-center gap-3 p-3 border rounded-xl ${selected.includes(s.id)
-                  ? "bg-gray-100 border-black"
-                  : "bg-white border-gray-200"
-                  }`}
-                type="button"
-              >
-                <img
-                  src={s.photo_url || "/profile-icon.png"}
-                  className="w-12 h-12 rounded-full object-cover"
-                  alt={s.name}
-                />
-                <div>
-                  <div className="font-medium">{s.name}</div>
-                  <div className="text-sm text-gray-500">{s.dept}</div>
-                </div>
-              </button>
-            ))}
+
+            {filteredStaff.map(s => {
+              const isHost = s.id === staffId;
+              const isSelected = selected.includes(s.id);
+
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => toggleStaff(s.id)}
+                  disabled={isHost}
+                  className={`flex items-center gap-3 p-3 border rounded-xl
+                    ${isSelected ? "bg-gray-100 border-black" : "bg-white border-gray-200"}
+                    ${isHost ? "opacity-60 cursor-not-allowed" : ""}`}
+                >
+                  <img
+                    src={s.photo_url || "/profile-icon.png"}
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
+
+                  <div>
+                    <div className="font-medium">
+                      {s.name} {isHost && "(Host)"}
+                    </div>
+                    <div className="text-sm text-gray-500">{s.dept}</div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Footer buttons — kept visually identical but pinned so actions stay visible */}
+        {/* Footer */}
         <div className="px-6 py-4 border-t flex justify-between bg-white gap-2">
           <button onClick={onClose} className="px-4 py-2 rounded-xl bg-gray-300">
             Cancel
           </button>
 
-          <button
-            onClick={save}
-            className="px-5 py-2 rounded-xl bg-black text-white"
-            type="button"
-          >
+          <button onClick={save} className="px-5 py-2 rounded-xl bg-black text-white">
             {meeting ? "Save Changes" : "Create Meeting"}
           </button>
         </div>
