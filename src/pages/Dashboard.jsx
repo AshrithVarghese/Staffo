@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { MagnifyingGlass, MapPin } from "@phosphor-icons/react";
+import { MagnifyingGlass, MapPin, Bug } from "@phosphor-icons/react";
 import StaffPopup from "../components/StaffPopup.jsx";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../utils/supabase";
@@ -60,6 +60,15 @@ export default function Dashboard() {
     alert(`Open map for ${staff.name} — location: ${staff.location}`);
   };
 
+  const handleMail = () => {
+    const recipients = "ashrithvarghese.cs24@jecc.ac.in,abhishekkrishnaam.cs24@jecc.ac.in";
+    const subject = encodeURIComponent("Bug Report - Staffo");
+    const body = encodeURIComponent("Describe the issue here:\n\n\n\n• What is the issue?\n\n• Do you have any solution for the issue?\n\n\n");
+
+    window.location.href = `mailto:${recipients}?subject=${subject}&body=${body}`;
+  };
+
+
   return (
     <div className="min-h-screen bg-gray-50 px-4 pb-8 pt-4">
       <header className="max-w-full mx-auto mb-6 flex items-center justify-between">
@@ -72,12 +81,14 @@ export default function Dashboard() {
           />
         </div>
 
-        <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center" onClick={() => { navigate('/staffdashboard') }}>
-          <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-            <circle cx="12" cy="8" r="3" />
-            <path d="M4 20c0-4 4-6 8-6s8 2 8 6" />
-          </svg>
+        <div
+          className="rounded-full bg-black flex items-center justify-center px-2 py-1 mt-3 text-white cursor-pointer"
+          onClick={handleMail}
+        >
+          <Bug size={18} />
+          <p className="m-1 text-xs">Report an Issue</p>
         </div>
+
       </header>
 
       <main className="max-w-7xl mx-auto">
