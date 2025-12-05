@@ -56,7 +56,7 @@ export default function StaffDashboard() {
       setStaff(staffData);
 
       // Open setup automatically if dept missing
-      if (!staffData?.dept || staffData.dept.trim() === "") {
+      if (!staffData?.dept?.trim() || !profileData?.phone?.trim()) {
         setShowSetup(true);
       }
 
