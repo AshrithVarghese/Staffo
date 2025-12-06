@@ -230,7 +230,7 @@ export default function PhotoUploader({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="fixed inset-0 z-1000 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-lg">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Change Profile Photo</h3>
@@ -252,11 +252,11 @@ export default function PhotoUploader({
           {error && <div className="text-sm text-red-600 mt-2">{error}</div>}
 
           <div className="flex gap-3 justify-end mt-4">
-            <button onClick={onClose} className="px-4 py-2 rounded-xl bg-gray-100">Cancel</button>
+            <button onClick={onClose} className="px-4 py-2 rounded-xl bg-gray-100 cursor-pointer">Cancel</button>
             <button
               onClick={handleSave}
               disabled={uploading || !file}
-              className={`px-4 py-2 rounded-xl text-white ${uploading || !file ? "bg-gray-400" : "bg-black"}`}
+              className={`px-4 py-2 rounded-xl text-white cursor-pointer ${uploading || !file ? "bg-gray-400" : "bg-black"}`}
             >
               {uploading ? "Saving..." : "Save"}
             </button>

@@ -186,7 +186,7 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
   // RENDER
   // -----------------------------------------------------
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-200 p-5">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-1000 p-5">
       <div className="bg-white w-full max-w-lg rounded-2xl shadow flex flex-col max-h-[90vh] overflow-hidden">
 
         {/* Scrollable Content */}
@@ -284,11 +284,11 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
 
         {/* Footer */}
         <div className="px-6 py-4 border-t flex justify-between bg-white gap-2">
-          <button onClick={onClose} className="px-4 py-2 rounded-xl bg-gray-300">
+          <button onClick={onClose} className="px-4 py-2 rounded-xl bg-gray-300 cursor-pointer">
             Cancel
           </button>
 
-          <button onClick={save} className="px-5 py-2 rounded-xl bg-black text-white">
+          <button onClick={save} className="px-5 py-2 rounded-xl bg-black text-white cursor-pointer">
             {meeting ? "Save Changes" : "Create Meeting"}
           </button>
         </div>

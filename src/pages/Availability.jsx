@@ -473,8 +473,8 @@ export default function Availability() {
         <div className="bg-white rounded-2xl p-4 shadow-sm space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative">
-              <MagnifyingGlass size={22} className="text-gray-500 absolute left-3.5 top-3" />
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search staff..." className="w-full rounded-xl py-2.5 pl-11 pr-4 shadow-sm border border-gray-200 focus:outline-none" />
+              <MagnifyingGlass size={22} className="text-gray-500 absolute left-3.5 top-8" />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search staff..." className="w-full rounded-xl py-2.5 pl-11 pr-4 shadow-sm border border-gray-200 focus:outline-none mt-5" />
             </div>
 
             <div>

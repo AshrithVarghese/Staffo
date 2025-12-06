@@ -202,19 +202,7 @@ export default function Dashboard() {
       {/* Staff popup */}
       {selected && (
         <StaffPopup
-          staff={{
-            name: selected.name,
-            dept: selected.dept,
-            role: selected.role || "",
-            avatar: selected.photo_url,
-            designation: selected.designation || "",
-            status: selected.status,
-            statusLabel: STATUS_META[selected.status]?.label,
-            location: selected.location,
-            room: selected.location?.split(",")[0] || "",
-            block: selected.location?.split("Block")?.[1]?.trim() || "",
-            schedule: selected.schedule,
-          }}
+          staff={selected}            // pass the full DB row object (contains id, photo_url, etc.)
           onClose={() => setSelected(null)}
           onViewMap={() => {
             handleViewMap(selected);

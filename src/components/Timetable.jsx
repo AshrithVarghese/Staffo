@@ -76,7 +76,7 @@ export default function Timetable({ staffId, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-5">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-1000 px-5">
       <div className="bg-white w-full max-w-lg rounded-2xl p-6 shadow overflow-y-auto max-h-[90vh]">
 
         <h2 className="text-xl font-semibold mb-4">Timetable</h2>
@@ -116,23 +116,22 @@ export default function Timetable({ staffId, onClose }) {
           );
         })}
 
-        <div className="flex justify-end mt-4">
-          <button
-            onClick={saveAll}
-            className="px-4 py-2 bg-black text-white rounded-xl"
-          >
-            Save Timetable
-          </button>
+        <div className="flex flex-row gap-2 justify-end">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl bg-gray-200 cursor-pointer"
+            >
+              Close
+            </button>
+            <button
+              onClick={saveAll}
+              className="px-4 py-2 bg-black text-white rounded-xl cursor-pointer"
+            >
+              Save
+            </button>
+            
         </div>
-
-        <div className="flex justify-end mt-2">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-gray-200"
-          >
-            Close
-          </button>
-        </div>
+        
 
       </div>
     </div>
