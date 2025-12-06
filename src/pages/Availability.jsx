@@ -61,7 +61,7 @@ function busyPeriodsFromTimetableRow(timetableRow, dayKey) {
   return set;
 }
 
-export default function AvailabilityAdvanced() {
+export default function Availability() {
   const [staff, setStaff] = useState([]);
   const [loadingStaff, setLoadingStaff] = useState(true);
 
@@ -81,6 +81,12 @@ export default function AvailabilityAdvanced() {
 
   const [hideHeatMap, setHideHeatMap] = useState(false);
 
+  /* ---------- Groups (DB-backed) ---------- */
+  // groups: [{ id, name, staff_ids: [...] }]
+  const [groups, setGroups] = useState([]);
+  const [groupsLoading, setGroupsLoading] = useState(false);
+
+  // Load staff list (existing) and groups on mount
   useEffect(() => {
     let mounted = true;
     const load = async () => {
@@ -97,25 +103,145 @@ export default function AvailabilityAdvanced() {
     return () => (mounted = false);
   }, []);
 
+  // Fetch groups (DB-backed) — non-invasive read
+  useEffect(() => {
+    let mounted = true;
+    const loadGroups = async () => {
+      setGroupsLoading(true);
+      const { data, error } = await supabase
+        .from("staff_groups")
+        .select("id, name, staff_ids, created_by, created_at")
+        .order("name", { ascending: true });
+      if (!mounted) return;
+      if (error) {
+        console.error("Failed fetching groups", error);
+        setGroups([]);
+      } else {
+        // sanitize staff_ids: ensure array of strings
+        const normalized = (data || []).map((g) => {
+          let ids = [];
+          try {
+            if (Array.isArray(g.staff_ids)) ids = g.staff_ids;
+            else if (typeof g.staff_ids === "string") ids = JSON.parse(g.staff_ids);
+            else if (g.staff_ids && typeof g.staff_ids === "object") ids = g.staff_ids;
+          } catch (e) {
+            ids = [];
+          }
+          return { ...g, staff_ids: Array.isArray(ids) ? ids : [] };
+        });
+        setGroups(normalized);
+      }
+      setGroupsLoading(false);
+    };
+    loadGroups();
+    return () => (mounted = false);
+  }, []);
+
+
   const toggleStaffSelection = (id) => {
     setSelectedStaffIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
-  // Helper to render combined class + meeting details
-  const renderBusyDetails = (details) => {
-    // details may be:
-    // { reason: "class", meta: "Room101" }
-    // { reason: "meeting", meta: { title, start_time, end_time, location } }
-    // or merged where meta is an array mixing strings and meeting objects.
-    if (!details) return null;
+  // Apply group: replace current selection with group's staff (filter out missing IDs),
+  // then run analyze() automatically.
+  const applyGroup = async (group) => {
+    if (!group) return;
+    // filter out non-existing staff ids
+    const validIds = (group.staff_ids || []).filter((id) => staff.some((s) => s.id === id));
+    setSelectedStaffIds(validIds);
+    // run analyze after state update — ensure analyze sees newest selection
+    // small delay to let state update (React setState is async); using microtask
+    await new Promise((res) => setTimeout(res, 0));
+    analyze();
+  };
 
-    // If meta is an array, show each item in order (prefer class string first if present)
+  // Create a new group record in DB from currently selected staff
+  const createGroupInDB = async () => {
+    if (selectedStaffIds.length === 0) {
+      alert("Select at least one staff to save as a group.");
+      return;
+    }
+    const name = prompt("Enter new group name (e.g. Club1):");
+    if (!name) return;
+    const cleanName = name.trim();
+    if (!cleanName) return;
+    // Check duplicate locally first
+    const duplicate = groups.find((g) => g.name.toLowerCase() === cleanName.toLowerCase());
+    if (duplicate) {
+      if (!confirm(`${cleanName} already exists. Overwrite?`)) return;
+      // overwrite: use upsert
+      const { error } = await supabase
+        .from("staff_groups")
+        .upsert({ id: duplicate.id, name: cleanName, staff_ids: selectedStaffIds, created_by: null }, { onConflict: "id" });
+      if (error) {
+        console.error("Failed overwriting group:", error);
+        alert("Failed to overwrite group. Check console.");
+        return;
+      }
+      // refresh groups
+      await refreshGroups();
+      return;
+    }
+
+    // insert new
+    const { data, error } = await supabase
+      .from("staff_groups")
+      .insert([{ name: cleanName, staff_ids: selectedStaffIds, created_by: null }])
+      .select();
+    if (error) {
+      console.error("Failed creating group:", error);
+      alert("Failed to create group. Check console.");
+      return;
+    }
+    await refreshGroups();
+  };
+
+  // delete group
+  const deleteGroupInDB = async (groupId, groupName) => {
+    if (!confirm(`Delete group "${groupName}"?`)) return;
+    const { error } = await supabase.from("staff_groups").delete().eq("id", groupId);
+    if (error) {
+      console.error("Failed deleting group:", error);
+      alert("Failed to delete group. Check console.");
+      return;
+    }
+    await refreshGroups();
+  };
+
+  const refreshGroups = async () => {
+    setGroupsLoading(true);
+    const { data, error } = await supabase
+      .from("staff_groups")
+      .select("id, name, staff_ids, created_by, created_at")
+      .order("name", { ascending: true });
+    if (error) {
+      console.error("Failed refreshing groups", error);
+      setGroups([]);
+    } else {
+      const normalized = (data || []).map((g) => {
+        let ids = [];
+        try {
+          if (Array.isArray(g.staff_ids)) ids = g.staff_ids;
+          else if (typeof g.staff_ids === "string") ids = JSON.parse(g.staff_ids);
+          else if (g.staff_ids && typeof g.staff_ids === "object") ids = g.staff_ids;
+        } catch (e) {
+          ids = [];
+        }
+        return { ...g, staff_ids: Array.isArray(ids) ? ids : [] };
+      });
+      setGroups(normalized);
+    }
+    setGroupsLoading(false);
+  };
+
+  /* ---------- existing analyze logic (unchanged) ---------- */
+  const renderBusyDetails = (details) => {
+    if (!details) return null;
     if (Array.isArray(details.meta)) {
       return (
         <div className="space-y-1">
           {details.meta.map((item, idx) => {
             if (typeof item === "string") {
-              // class string
               return (
                 <div key={idx} className="text-xs text-gray-700">
                   <strong>Class</strong> — {item}
@@ -128,7 +254,6 @@ export default function AvailabilityAdvanced() {
                 </div>
               );
             } else if (item && typeof item === "object") {
-              // fallback meeting object without type
               return (
                 <div key={idx} className="text-xs text-gray-700">
                   <strong>Meeting</strong> — {item.title || "Untitled"} ({(item.start_time || "").slice(0,5)} - {(item.end_time || "").slice(0,5)}) @ {item.location || "—"}
@@ -141,8 +266,6 @@ export default function AvailabilityAdvanced() {
         </div>
       );
     }
-
-    // If meta is a plain string -> class
     if (typeof details.meta === "string") {
       return (
         <div className="text-xs text-gray-700">
@@ -150,8 +273,6 @@ export default function AvailabilityAdvanced() {
         </div>
       );
     }
-
-    // If meta is an object -> meeting
     if (details.meta && typeof details.meta === "object") {
       const m = details.meta;
       return (
@@ -160,8 +281,6 @@ export default function AvailabilityAdvanced() {
         </div>
       );
     }
-
-    // fallback
     return <div className="text-xs text-gray-700">Busy</div>;
   };
 
@@ -375,9 +494,71 @@ export default function AvailabilityAdvanced() {
             </div>
           </div>
 
+          {/* Groups UI (DB-backed) */}
+          <div className="bg-white rounded-2xl p-3 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-xs font-medium text-gray-600">Groups</div>
+              <div className="text-xs text-gray-500">{groupsLoading ? "Loading…" : `${groups.length} groups`}</div>
+            </div>
+
+            <div className="flex gap-2 flex-wrap items-center">
+
+              {groups.length === 0 && <div className="text-xs text-gray-500">No groups</div>}
+
+              {groups.map((g) => (
+                <div key={g.id} className="flex items-center gap-2 border border-black rounded-full cursor-pointer">
+                  <button
+                    onClick={() => applyGroup(g)}
+                    className="whitespace-nowrap px-3 py-1 rounded-full text-xs bg-white text-black cursor-pointer"
+                  >
+                    {g.name}
+                  </button>
+                  <button
+                    onClick={() => deleteGroupInDB(g.id, g.name)}
+                    className="text-lg text-black-500 pr-2 cursor-pointer"
+                    title={`Delete ${g.name}`}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+
+              <button
+                onClick={createGroupInDB}
+                className=" px-3 py-1 rounded-full text-xs bg-blue-50 text-green-700 border border-green-100"
+                title="Save current selection as a group"
+              >
+                Create new group with selected staff
+              </button>
+
+
+              {/*Option to refresh groups from DB on run (This will not be requires as of now)*/}
+
+              {/* <button
+                onClick={refreshGroups}
+                className="ml-2 px-3 py-1 rounded-full text-xs bg-white border border-gray-200"
+                title="Refresh groups"
+              >
+                Refresh
+              </button> */}
+            </div>
+          </div>
+
           {/* staff list + selection */}
           <div className="mt-2">
-            <p className="text-xs font-medium text-gray-600 mb-2">Tap to select staff to analyze</p>
+            <div className="flex flex-row items-center lg:w-2/3 justify-between mb-2">
+              <p className="text-xs font-medium text-gray-600">Tap to select staff to analyze</p>
+              <button
+                onClick={() => {
+                  setSelectedStaffIds([]);
+                  setHideHeatMap(false);
+                }}
+                className="px-3 py-1 rounded-full text-xs bg-white border border-gray-200"
+              >
+                Clear selection
+              </button>
+            </div>
+            
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <div className="col-span-1 md:col-span-2 bg-white rounded-2xl p-3 shadow-sm max-h-64 overflow-auto">
                 {loadingStaff ? (
@@ -416,7 +597,7 @@ export default function AvailabilityAdvanced() {
                       <div key={id} className="flex items-center gap-2 px-2 py-1 bg-gray-100 rounded-full">
                         <img src={s.photo_url} alt={s.name} className="w-6 h-6 rounded-full object-cover" onError={(e) => (e.currentTarget.src = "/profile-icon.png")} />
                         <span className="text-xs">{s.name}</span>
-                        <button onClick={() => { toggleStaffSelection(id); analyze(); setHideHeatMap(true); }} className="ml-1 text-lg text-red-500 cursor-pointer">×</button>
+                        <button onClick={() => { toggleStaffSelection(id); analyze(); setHideHeatMap(true); }} className="ml-1 text-lg text-black-500 cursor-pointer">×</button>
                       </div>
                     );
                   })}
@@ -504,7 +685,6 @@ export default function AvailabilityAdvanced() {
 
                       <div className="mt-2 text-xs text-gray-600">
                         {isBusy && details ? (
-                          // use helper to render both class and meeting if both exist
                           renderBusyDetails(details)
                         ) : !isBusy ? (
                           <div>Free during this period</div>
