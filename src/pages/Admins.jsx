@@ -149,7 +149,6 @@ const Admins = () => {
             </div>
           </div>
 
-        
         </main>
     </div>
   )

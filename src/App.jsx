@@ -10,6 +10,7 @@ import MeetingDashboard from "./pages/MeetingDashboard";
 import Notfound from "./pages/Notfound";
 import Availability from "./pages/Availability";
 import Admins from "./pages/Admins";
+import Download from "./pages/Download";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleRoute from "./components/RoleRoute";
@@ -174,6 +175,7 @@ export default function App() {
           }
         />
 
+        <Route path="/download" element={<Download />} />
         <Route path="/*" element={<Notfound />} />
       </Routes>
     </>

@@ -126,7 +126,7 @@ export default function Landing() {
               Ready to check staff availability instantly?
             </p>
 
-            <button onClick={()=>navigate('/login')} className='bg-white text-black px-2 py-1 rounded-lg mt-3 font-medium w-full cursor-pointer'>Try Staffo</button>
+            <button onClick={()=>navigate('/download')} className='bg-white text-black px-2 py-1 rounded-lg mt-3 font-medium w-full cursor-pointer'>Download Staffo</button>
         </div>
 
         {/* <img src="/Jyothi Logo Blue.png" alt="Jyothi Logo" className='w-60 items-center mx-auto opacity-80'/> */}
