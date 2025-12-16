@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from "react";
 import { Download as DownloadIcon, Phone, Monitor, AppWindow } from "@phosphor-icons/react";
 
 const Download = () => {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [showInstallUI, setShowInstallUI] = useState(true);
+  const [showInstallUI, setShowInstallUI] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [userAgent, setUserAgent] = useState('');
 
@@ -78,7 +78,6 @@ const Download = () => {
       </header>
 
       <main className="max-w-4xl mx-auto space-y-6">
-        {/* Installation Status Card */}
         {isInstalled && (
           <div className="bg-green-50 border border-green-200 rounded-2xl p-6 flex items-center gap-4">
             <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
@@ -91,7 +90,6 @@ const Download = () => {
           </div>
         )}
 
-        {/* Custom Install Prompt */}
         {showInstallUI && !isInstalled && (
           <div className="bg-gradient-to-r from-black to-gray-800 rounded-2xl p-6 text-white shadow-lg animate-pulse-soft">
             <div className="flex items-start justify-between mb-4">
@@ -120,6 +118,12 @@ const Download = () => {
                 </div>
                 <span>Home Screen Access</span>
               </div>
+              <div className="flex items-center gap-2 text-sm">
+                <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center">
+                  <span className="text-black text-xs">✓</span>
+                </div>
+                <span>Works Offline</span>
+              </div>
             </div>
 
             <button
@@ -132,7 +136,103 @@ const Download = () => {
           </div>
         )}
 
+        {!showInstallUI && !isInstalled && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                  <Phone size={24} className="text-green-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800">Android</h3>
+              </div>
+              <div className="space-y-2 text-sm text-gray-600">
+                <p className="font-medium text-gray-800">Installation Steps:</p>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Open Staffo in Chrome or Edge browser</li>
+                  <li>Tap the menu icon (⋮)</li>
+                  <li>Select "Install app" or "Add to Home screen"</li>
+                  <li>Follow the on-screen prompts</li>
+                </ol>
+              </div>
+            </div>
 
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                  <Phone size={24} className="text-blue-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800">iOS / iPadOS</h3>
+              </div>
+              <div className="space-y-2 text-sm text-gray-600">
+                <p className="font-medium text-gray-800">Installation Steps:</p>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Open Staffo in Safari</li>
+                  <li>Tap the Share button</li>
+                  <li>Select "Add to Home Screen"</li>
+                  <li>Tap "Add" to confirm</li>
+                </ol>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                  <Monitor size={24} className="text-purple-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800">Desktop</h3>
+              </div>
+              <div className="space-y-2 text-sm text-gray-600">
+                <p className="font-medium text-gray-800">Installation Steps:</p>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Open Staffo in Chrome, Edge, or similar</li>
+                  <li>Click the install icon (⬇️) in the address bar</li>
+                  <li>Confirm the installation dialog</li>
+                  <li>Staffo opens as a standalone window</li>
+                </ol>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
+                  <AppWindow size={24} className="text-amber-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800">App Benefits</h3>
+              </div>
+              <ul className="space-y-3 text-sm text-gray-600">
+                <li className="flex items-start gap-2"><span className="text-amber-600 font-bold mt-0.5">⚡</span><span><strong>Faster Load Times:</strong> App caching for instant access</span></li>
+                <li className="flex items-start gap-2"><span className="text-amber-600 font-bold mt-0.5">📱</span><span><strong>Home Screen Icon:</strong> Quick access from your home screen</span></li>
+                <li className="flex items-start gap-2"><span className="text-amber-600 font-bold mt-0.5">🔋</span><span><strong>Offline Support:</strong> Access cached data without internet</span></li>
+                <li className="flex items-start gap-2"><span className="text-amber-600 font-bold mt-0.5">🔔</span><span><strong>Notifications:</strong> Receive updates</span></li>
+                <li className="flex items-start gap-2"><span className="text-amber-600 font-bold mt-0.5">💾</span><span><strong>Minimal Storage:</strong> Uses less space than native apps</span></li>
+              </ul>
+            </div>
+          </div>
+        )}
+
+        
+
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Frequently Asked Questions</h3>
+          <div className="space-y-4">
+            <details className="group border-b border-gray-200 pb-4">
+              <summary className="font-medium text-gray-800 cursor-pointer hover:text-black transition-colors">Can I uninstall the app?</summary>
+              <p className="text-gray-600 text-sm mt-2">Yes! You can uninstall Staffo like any other app. On Android, long-press the app icon and select "Uninstall". On iOS, long-press and select "Remove App".</p>
+            </details>
+            <details className="group border-b border-gray-200 pb-4">
+              <summary className="font-medium text-gray-800 cursor-pointer hover:text-black transition-colors">Does it work offline?</summary>
+              <p className="text-gray-600 text-sm mt-2">Yes! The app caches essential data when you first load it. Some features may be limited without internet, but you can still access previously loaded information.</p>
+            </details>
+            <details className="group border-b border-gray-200 pb-4">
+              <summary className="font-medium text-gray-800 cursor-pointer hover:text-black transition-colors">Will it use my device storage?</summary>
+              <p className="text-gray-600 text-sm mt-2">Very little! Progressive Web Apps use minimal storage compared to native apps. You can clear it like website cache.</p>
+            </details>
+            <details className="group">
+              <summary className="font-medium text-gray-800 cursor-pointer hover:text-black transition-colors">How do I get updates?</summary>
+              <p className="text-gray-600 text-sm mt-2">Updates happen automatically in the background. You'll always have the latest version without manual updates.</p>
+            </details>
+          </div>
+        </div>
       </main>
 
       <style jsx>{`
@@ -149,7 +249,6 @@ const Download = () => {
         }
       `}</style>
     </div>
-  )
+  );
 }
-
 export default Download
