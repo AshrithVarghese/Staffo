@@ -67,16 +67,15 @@ export default function Availability() {
 
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState("All");
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   const [selectedStaffIds, setSelectedStaffIds] = useState([]);
   const [analyzing, setAnalyzing] = useState(false);
 
   const [timetableMap, setTimetableMap] = useState({});
   const [meetingsByStaff, setMeetingsByStaff] = useState({});
-  const [perStaffBusy, setPerStaffBusy] = useState({});
-  const [availableCount, setAvailableCount] = useState({});
-  const [perPeriodDetails, setPerPeriodDetails] = useState({});
+  const [perDateData, setPerDateData] = useState({}); // { date: { perStaffBusy, availableCount, perPeriodDetails } }
   const [bestPeriods, setBestPeriods] = useState({ exactCommon: [], fallbackBest: [] });
 
   const [hideHeatMap, setHideHeatMap] = useState(false);
@@ -237,6 +236,7 @@ export default function Availability() {
   /* ---------- existing analyze logic (unchanged) ---------- */
   const renderBusyDetails = (details) => {
     if (!details) return null;
+    
     if (Array.isArray(details.meta)) {
       return (
         <div className="space-y-1">
@@ -284,15 +284,39 @@ export default function Availability() {
     return <div className="text-xs text-gray-700">Busy</div>;
   };
 
+  // Helper function to get all dates in the range
+  const getDateRange = (start, end) => {
+    const dates = [];
+    const startDt = new Date(start);
+    const endDt = new Date(end);
+    
+    for (let dt = new Date(startDt); dt <= endDt; dt.setDate(dt.getDate() + 1)) {
+      const isoDate = dt.toISOString().slice(0, 10);
+      const dayKey = getDayKeyFromDate(isoDate);
+      // Skip Sundays (dayKey = null)
+      if (dayKey) {
+        dates.push(isoDate);
+      }
+    }
+    return dates;
+  };
+
   const analyze = async () => {
     if (selectedStaffIds.length === 0) {
-      setTimetableMap({}); setMeetingsByStaff({}); setPerStaffBusy({}); setAvailableCount({}); setPerPeriodDetails({}); setBestPeriods({ exactCommon: [], fallbackBest: [] });
+      setTimetableMap({}); setMeetingsByStaff({}); setPerDateData({}); setBestPeriods({ exactCommon: [], fallbackBest: [] });
       return;
     }
 
     setAnalyzing(true);
-    const dayKey = getDayKeyFromDate(selectedDate);
-    const PERIOD_TIME_MAP = getPeriodTimeMap(dayKey);
+    
+    // Get all dates in the range (excluding Sundays)
+    const dateRange = getDateRange(startDate, endDate);
+    
+    if (dateRange.length === 0) {
+      alert("No valid dates in the selected range (excluding Sundays)");
+      setAnalyzing(false);
+      return;
+    }
 
     // 1) timetables
     const ttRes = await supabase
@@ -314,26 +338,28 @@ export default function Availability() {
     // collect meeting ids where selected staff are participants
     const meetingIdsFromParticipants = new Set((mpRes.data || []).map((r) => r.meeting_id));
 
-    // 3) fetch meetings where host in selected OR id in participant meeting ids (filter BY selectedDate for BOTH queries)
+    // 3) fetch meetings where host in selected OR id in participant meeting ids (filter BY date range)
     const meetingIdArray = Array.from(meetingIdsFromParticipants);
     let meetings = [];
     try {
-      // meetings where selected are hosts (and on selectedDate)
+      // meetings where selected are hosts (within date range)
       const qHost = supabase
         .from("meetings")
         .select("id, host_staff_id, title, description, meeting_date, start_time, end_time, location")
-        .eq("meeting_date", selectedDate)
+        .gte("meeting_date", startDate)
+        .lte("meeting_date", endDate)
         .in("host_staff_id", selectedStaffIds);
 
       const queries = [qHost];
 
-      // meetings where selected are participants (only ids we collected) — also filter by meeting_date
+      // meetings where selected are participants (only ids we collected) — also filter by date range
       if (meetingIdArray.length) {
         const qPart = supabase
           .from("meetings")
           .select("id, host_staff_id, title, description, meeting_date, start_time, end_time, location")
           .in("id", meetingIdArray)
-          .eq("meeting_date", selectedDate); // ensure participant meetings are for the selected date
+          .gte("meeting_date", startDate)
+          .lte("meeting_date", endDate);
         queries.push(qPart);
       }
 
@@ -368,71 +394,100 @@ export default function Availability() {
 
     setMeetingsByStaff(meetingsMap);
 
-    // 5) compute busy periods
-    const perStaffBusyLocal = {};
-    const perPeriodDetailsLocal = {};
-    for (let p = 1; p <= 7; p++) perPeriodDetailsLocal[p] = {};
+    // 5) compute busy periods per date separately
+    const perDateDataLocal = {};
+    
+    dateRange.forEach((dateIso) => {
+      const dayKey = getDayKeyFromDate(dateIso);
+      const PERIOD_TIME_MAP = getPeriodTimeMap(dayKey);
+      
+      const perStaffBusyLocal = {};
+      const perPeriodDetailsLocal = {};
+      for (let p = 1; p <= 7; p++) perPeriodDetailsLocal[p] = {};
 
-    selectedStaffIds.forEach((sid) => {
-      const sBusy = new Set();
+      selectedStaffIds.forEach((sid) => {
+        const sBusy = new Set();
+        const ttRow = ttMap[sid];
+        
+        // Check timetable busy periods for this date
+        const ttBusy = busyPeriodsFromTimetableRow(ttRow, dayKey);
+        ttBusy.forEach((p) => {
+          sBusy.add(p);
+          perPeriodDetailsLocal[p][sid] = {
+            reason: "class",
+            meta: (ttRow && ttRow[dayKey] && ttRow[dayKey][p - 1]) || "Class",
+          };
+        });
 
-      const ttRow = ttMap[sid];
-      const ttBusy = busyPeriodsFromTimetableRow(ttRow, dayKey);
-      ttBusy.forEach((x) => {
-        sBusy.add(x);
-        perPeriodDetailsLocal[x][sid] = {
-          reason: "class",
-          meta: (ttRow && ttRow[dayKey] && ttRow[dayKey][x - 1]) || "Class",
-        };
-      });
-
-      const staffMeetings = meetingsMap[sid] || [];
-      staffMeetings.forEach((m) => {
-        for (const pt of PERIOD_TIME_MAP) {
-          if (meetingOverlapsPeriod(m, selectedDate, pt)) {
-            sBusy.add(pt.period);
-            const prev = perPeriodDetailsLocal[pt.period][sid];
-            if (prev) {
-              // previous exists (likely class) — convert/append to array
-              if (!Array.isArray(prev.meta)) prev.meta = [prev.meta];
-              prev.meta.push({ type: "meeting", meetingId: m.id, title: m.title, start_time: m.start_time, end_time: m.end_time, location: m.location });
-              // normalize reason to indicate mixed content
-              prev.reason = "mixed";
-            } else {
-              perPeriodDetailsLocal[pt.period][sid] = {
-                reason: "meeting",
-                meta: { meetingId: m.id, title: m.title, start_time: m.start_time, end_time: m.end_time, location: m.location },
-              };
+        // Check meetings for this date
+        const staffMeetings = meetingsMap[sid] || [];
+        staffMeetings.filter(m => m.meeting_date === dateIso).forEach((m) => {
+          for (const pt of PERIOD_TIME_MAP) {
+            if (meetingOverlapsPeriod(m, dateIso, pt)) {
+              sBusy.add(pt.period);
+              const prev = perPeriodDetailsLocal[pt.period][sid];
+              const meetingInfo = { type: "meeting", meetingId: m.id, title: m.title, start_time: m.start_time, end_time: m.end_time, location: m.location };
+              
+              if (prev) {
+                if (!Array.isArray(prev.meta)) prev.meta = [prev.meta];
+                prev.meta.push(meetingInfo);
+                prev.reason = "mixed";
+              } else {
+                perPeriodDetailsLocal[pt.period][sid] = {
+                  reason: "meeting",
+                  meta: meetingInfo,
+                };
+              }
             }
           }
-        }
-      });
+        });
 
-      perStaffBusyLocal[sid] = sBusy;
+        perStaffBusyLocal[sid] = sBusy;
+      });
+      
+      // Calculate available count for this date
+      const availCountLocal = {};
+      for (let p = 1; p <= 7; p++) {
+        let free = 0;
+        selectedStaffIds.forEach((sid) => {
+          const busySet = perStaffBusyLocal[sid] || new Set();
+          if (!busySet.has(p)) free++;
+        });
+        availCountLocal[p] = free;
+      }
+      
+      perDateDataLocal[dateIso] = {
+        perStaffBusy: perStaffBusyLocal,
+        availableCount: availCountLocal,
+        perPeriodDetails: perPeriodDetailsLocal,
+        dayKey: dayKey
+      };
     });
 
-    // 6) available counts
-    const availCountLocal = {};
+    // 6) Calculate best periods across all dates (periods that are free on ALL dates)
+    const periodFrequency = {}; // How many dates each period is fully free
     for (let p = 1; p <= 7; p++) {
-      let free = 0;
-      selectedStaffIds.forEach((sid) => {
-        const busySet = perStaffBusyLocal[sid] || new Set();
-        if (!busySet.has(p)) free++;
+      let freeOnAllDates = true;
+      dateRange.forEach((dateIso) => {
+        const dateData = perDateDataLocal[dateIso];
+        if (dateData.availableCount[p] !== selectedStaffIds.length) {
+          freeOnAllDates = false;
+        }
       });
-      availCountLocal[p] = free;
+      periodFrequency[p] = freeOnAllDates ? dateRange.length : 0;
     }
-
-    // 7) best periods
+    
     const exactCommon = [];
-    for (let p = 1; p <= 7; p++) if (availCountLocal[p] === selectedStaffIds.length) exactCommon.push(p);
-    let maxFree = 0;
-    for (let p = 1; p <= 7; p++) maxFree = Math.max(maxFree, availCountLocal[p]);
+    for (let p = 1; p <= 7; p++) {
+      if (periodFrequency[p] === dateRange.length) exactCommon.push(p);
+    }
+    
+    let maxFreeDates = 0;
+    for (let p = 1; p <= 7; p++) maxFreeDates = Math.max(maxFreeDates, periodFrequency[p]);
     const fallbackBest = [];
-    for (let p = 1; p <= 7; p++) if (availCountLocal[p] === maxFree) fallbackBest.push(p);
+    for (let p = 1; p <= 7; p++) if (periodFrequency[p] === maxFreeDates) fallbackBest.push(p);
 
-    setPerStaffBusy(perStaffBusyLocal);
-    setAvailableCount(availCountLocal);
-    setPerPeriodDetails(perPeriodDetailsLocal);
+    setPerDateData(perDateDataLocal);
     setBestPeriods({ exactCommon, fallbackBest });
 
     setAnalyzing(false);
@@ -456,8 +511,9 @@ export default function Availability() {
     return "bg-red-500 text-white";
   };
 
-  const [activePeriod, setActivePeriod] = useState(null);
-  const currentPeriodTimes = getPeriodTimeMap(getDayKeyFromDate(selectedDate));
+  const [activePeriod, setActivePeriod] = useState(null); // { date, period }
+  // Use Monday-Thursday as default period map for display (most common case)
+  const currentPeriodTimes = getPeriodTimeMap("monday");
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 pb-25 pt-4">
@@ -471,15 +527,20 @@ export default function Availability() {
       <main className="max-w-6xl mx-auto space-y-5">
         {/* Controls (search, date, dept) */}
         <div className="bg-white rounded-2xl p-4 shadow-sm space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="relative">
               <MagnifyingGlass size={22} className="text-gray-500 absolute left-3.5 top-8" />
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search staff..." className="w-full rounded-xl py-2.5 pl-11 pr-4 shadow-sm border border-gray-200 focus:outline-none mt-5" />
             </div>
 
             <div>
-              <label className="text-xs font-medium text-gray-600">Select date</label>
-              <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none" />
+              <label className="text-xs font-medium text-gray-600">Start Date</label>
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none" />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-gray-600">End Date</label>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} min={startDate} className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none" />
             </div>
 
             <div>
@@ -619,30 +680,48 @@ export default function Availability() {
         </div>
 
         {/* Heatmap */}
-        {!hideHeatMap && (
+        {!hideHeatMap && Object.keys(perDateData).length > 0 && (
           <div className="bg-white rounded-2xl p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <div className="text-sm font-medium">7-Period Heatmap for {selectedDate}</div>
-                <div className="text-xs text-gray-500">Click a period to see per-staff availability details</div>
+                <div className="text-sm font-medium">Availability Heatmap</div>
+                <div className="text-xs text-gray-500">
+                  Click a period to see per-staff availability details for that date
+                </div>
               </div>
               <div className="text-xs text-gray-500">Selected: {selectedStaffIds.length}</div>
             </div>
 
-            <div className="flex gap-1 flex-wrap">
-              {currentPeriodTimes.map((pt) => {
-                const free = availableCount[pt.period] ?? (selectedStaffIds.length ? 0 : 0);
-                const ratio = selectedStaffIds.length ? free / selectedStaffIds.length : 0;
-                const classes = colorForRatio(ratio);
+            <div className="space-y-3">
+              {Object.keys(perDateData).map((dateIso) => {
+                const dateData = perDateData[dateIso];
+                const dayKey = dateData.dayKey;
+                const periodTimes = getPeriodTimeMap(dayKey);
+                const dayName = getDayKeyFromDate(dateIso);
+                
                 return (
-                  <button
-                    key={pt.period}
-                    onClick={() => setActivePeriod(pt.period)}
-                    className={`flex-1 rounded-xl py-3 px-1 flex flex-col items-center cursor-pointer justify-center ${classes} shadow-sm`}
-                  >
-                    <div className="text-sm font-semibold">P{pt.period}</div>
-                    <div className="text-xs mt-1">{free}/{selectedStaffIds.length || 0} free</div>
-                  </button>
+                  <div key={dateIso} className="border rounded-xl p-3">
+                    <div className="text-xs font-medium text-gray-600 mb-2">
+                      {dateIso} ({dayName.charAt(0).toUpperCase() + dayName.slice(1)})
+                    </div>
+                    <div className="flex gap-1 flex-wrap">
+                      {periodTimes.map((pt) => {
+                        const free = dateData.availableCount[pt.period] ?? 0;
+                        const ratio = selectedStaffIds.length ? free / selectedStaffIds.length : 0;
+                        const classes = colorForRatio(ratio);
+                        return (
+                          <button
+                            key={pt.period}
+                            onClick={() => setActivePeriod({ date: dateIso, period: pt.period })}
+                            className={`flex-1 rounded-xl py-3 px-1 flex flex-col items-center cursor-pointer justify-center ${classes} shadow-sm`}
+                          >
+                            <div className="text-sm font-semibold">P{pt.period}</div>
+                            <div className="text-xs mt-1">{free}/{selectedStaffIds.length || 0} free</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -650,12 +729,14 @@ export default function Availability() {
         )}
 
         {/* Details */}
-        {activePeriod && (
+        {activePeriod && perDateData[activePeriod.date] && (
           <div className="mt-4 bg-gray-50 p-3 rounded-lg">
             <div className="flex items-start justify-between">
               <div>
-                <div className="text-sm font-medium">Period {activePeriod} details</div>
-                <div className="text-xs text-gray-500">Time: {currentPeriodTimes[activePeriod - 1].start.slice(0,5)} - {currentPeriodTimes[activePeriod - 1].end.slice(0,5)}</div>
+                <div className="text-sm font-medium">Period {activePeriod.period} details for {activePeriod.date}</div>
+                <div className="text-xs text-gray-500">
+                  Time: {getPeriodTimeMap(perDateData[activePeriod.date].dayKey)[activePeriod.period - 1].start.slice(0,5)} - {getPeriodTimeMap(perDateData[activePeriod.date].dayKey)[activePeriod.period - 1].end.slice(0,5)}
+                </div>
               </div>
               <div>
                 <button onClick={() => setActivePeriod(null)} className="text-xs text-gray-500">Close</button>
@@ -666,9 +747,10 @@ export default function Availability() {
               {selectedStaffIds.length === 0 && <div className="text-sm text-gray-500">No staff selected</div>}
               {selectedStaffIds.map((sid) => {
                 const s = staff.find((x) => x.id === sid) || { name: "Unknown", photo_url: "/profile-icon.png" };
-                const busySet = perStaffBusy[sid] || new Set();
-                const isBusy = busySet.has(activePeriod);
-                const details = perPeriodDetails[activePeriod] ? perPeriodDetails[activePeriod][sid] : null;
+                const dateData = perDateData[activePeriod.date];
+                const busySet = dateData.perStaffBusy[sid] || new Set();
+                const isBusy = busySet.has(activePeriod.period);
+                const details = dateData.perPeriodDetails[activePeriod.period] ? dateData.perPeriodDetails[activePeriod.period][sid] : null;
                 return (
                   <div key={sid} className="bg-white p-3 rounded-lg shadow-sm flex items-start gap-3">
                     <img src={s.photo_url || "/profile-icon.png"} alt={s.name} className="w-10 h-10 rounded-full object-cover" onError={(e) => (e.currentTarget.src = "/profile-icon.png")} />

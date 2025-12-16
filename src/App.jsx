@@ -9,6 +9,7 @@ import StaffDashboard from "./pages/StaffDashboard";
 import MeetingDashboard from "./pages/MeetingDashboard";
 import Notfound from "./pages/Notfound";
 import Availability from "./pages/Availability";
+import Admins from "./pages/Admins";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleRoute from "./components/RoleRoute";
@@ -132,7 +133,7 @@ export default function App() {
           path="/staffdashboard"
           element={
             <ProtectedRoute>
-              <RoleRoute allow={["staff"]}>
+              <RoleRoute allow={["staff", "admin"]}>
                 <StaffDashboard />
               </RoleRoute>
             </ProtectedRoute>
@@ -144,7 +145,7 @@ export default function App() {
           path="/meetings"
           element={
             <ProtectedRoute>
-              <RoleRoute allow={["staff"]}>
+              <RoleRoute allow={["staff", "admin"]}>
                 <MeetingDashboardWrapper />
               </RoleRoute>
             </ProtectedRoute>
@@ -155,8 +156,19 @@ export default function App() {
           path="/availability"
           element={
             <ProtectedRoute>
-              <RoleRoute allow={["staff"]}>
+              <RoleRoute allow={["staff", "admin"]}>
                 <Availability />
+              </RoleRoute>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admins"
+          element={
+            <ProtectedRoute>
+              <RoleRoute allow={["admin"]}>
+                <Admins />
               </RoleRoute>
             </ProtectedRoute>
           }
