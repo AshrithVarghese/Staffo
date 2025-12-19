@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
-import { MagnifyingGlass, MapPin, Bug, SignOut, CircleNotch, DownloadSimpleIcon } from "@phosphor-icons/react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { MagnifyingGlass, MapPin, Bug, SignOut, CircleNotch, DownloadSimpleIcon, List, X } from "@phosphor-icons/react";
 import StaffPopup from "../components/StaffPopup.jsx";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../utils/supabase";
@@ -20,47 +20,41 @@ export default function Dashboard() {
   const [active, setActive] = useState("All");
   const [selected, setSelected] = useState(null);
   const [staff, setStaff] = useState([]);
-  const [loading, setLoading] = useState(true); // New loading state
+  const [loading, setLoading] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     const load = async () => {
-      setLoading(true); // Start loading
+      setLoading(true);
       const { data, error } = await supabase.from("staff").select("*");
-      if (error) {
-        console.error("Supabase error:", error);
-      } else {
-        setStaff(data || []);
-      }
-      setLoading(false); // Stop loading
+      if (error) console.error("Supabase error:", error);
+      else setStaff(data || []);
+      setLoading(false);
     };
 
     load();
 
     const channel = supabase
       .channel("public:staff")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "staff" },
-        (payload) => {
-          if (payload.eventType === "INSERT") {
-            setStaff((prev) => [...prev, payload.new]);
-          } else if (payload.eventType === "UPDATE") {
-            setStaff((prev) =>
-              prev.map((s) => (s.id === payload.new.id ? payload.new : s))
-            );
-            setSelected((prevSelected) =>
-              prevSelected?.id === payload.new.id ? payload.new : prevSelected
-            );
-          } else if (payload.eventType === "DELETE") {
-            setStaff((prev) => prev.filter((s) => s.id !== payload.old.id));
-          }
-        }
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "staff" }, (payload) => {
+        if (payload.eventType === "INSERT") setStaff((prev) => [...prev, payload.new]);
+        else if (payload.eventType === "UPDATE") {
+          setStaff((prev) => prev.map((s) => (s.id === payload.new.id ? payload.new : s)));
+          setSelected((prevSelected) => (prevSelected?.id === payload.new.id ? payload.new : prevSelected));
+        } else if (payload.eventType === "DELETE") setStaff((prev) => prev.filter((s) => s.id !== payload.old.id));
+      })
       .subscribe();
+
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
 
     return () => {
       supabase.removeChannel(channel);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
@@ -68,26 +62,21 @@ export default function Dashboard() {
     return staff.filter((s) => {
       const matchFilter = active === "All" ? true : s.dept === active;
       const qLower = q.trim().toLowerCase();
-      const matchQuery =
-        !qLower ||
+      const matchQuery = !qLower ||
         s.name?.toLowerCase().includes(qLower) ||
         s.dept?.toLowerCase().includes(qLower) ||
         s.location?.toLowerCase().includes(qLower) ||
         s.designation?.toLowerCase().includes(qLower);
-
       return matchFilter && matchQuery;
     });
   }, [q, active, staff]);
-
-  const handleViewMap = (staff) => {
-    alert(`Open map for ${staff.name} — location: ${staff.location}`);
-  };
 
   const handleMail = () => {
     const recipients = "ashrithvarghese.cs24@jecc.ac.in,abhishekkrishnaam.cs24@jecc.ac.in";
     const subject = encodeURIComponent("Bug Report - Staffo");
     const body = encodeURIComponent("Describe the issue here:\n\n\n\n• What is the issue?\n\n• Do you have any solution for the issue?\n\n\n");
     window.location.href = `mailto:${recipients}?subject=${subject}&body=${body}`;
+    setMenuOpen(false);
   };
 
   const handleSignOut = () => {
@@ -96,25 +85,57 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 pb-50 pt-4">
-      <header className="max-w-full mx-auto mb-6 flex items-center justify-between">
+    <div className="min-h-screen bg-gray-50 px-4 pb-20 pt-4 font-sans">
+      <header className="max-w-full mx-auto mb-6 flex items-center justify-between relative">
         <div className="flex items-center gap-3">
-          <img src="/staffo.png" alt="Staffo" className="w-32 cursor-pointer" onClick={() => navigate("/")} />
+          <img src="/staffo.png" alt="Staffo" className="w-32 cursor-pointer transition-transform active:scale-95" onClick={() => navigate("/")} />
         </div>
-        <div className="flex items-center gap-1">
-          <div
-            className="rounded-full bg-black flex items-center justify-center px-2 py-1 mt-3 text-white cursor-pointer"
-            onClick={() => navigate("/download")}
-          >
+
+        {/* Desktop Navigation */}
+        <div className="hidden md:flex items-center gap-1">
+          <div className="rounded-full bg-black flex items-center justify-center px-2 py-1 mt-3 text-white cursor-pointer hover:bg-gray-800 transition-colors" onClick={() => navigate("/download")}>
             <DownloadSimpleIcon size={18} />
             <p className="m-1 text-xs">Download</p>
           </div>
-          <div className="rounded-full bg-black flex items-center justify-center px-2 py-1 mt-3 text-white cursor-pointer" onClick={handleMail}>
+          <div className="rounded-full bg-black flex items-center justify-center px-2 py-1 mt-3 text-white cursor-pointer hover:bg-gray-800 transition-colors" onClick={handleMail}>
             <Bug size={18} />
             <p className="m-1 text-xs">Report Issue</p>
           </div>
-          <div className="rounded-full bg-black border-t border-gray-200 z-50 p-1 flex mt-3 cursor-pointer" onClick={handleSignOut}>
+          <div className="rounded-full bg-black border-t border-gray-200 z-50 p-1 flex mt-3 cursor-pointer hover:bg-gray-800 transition-colors" onClick={handleSignOut}>
             <SignOut size={22} className="text-white" />
+          </div>
+        </div>
+
+        {/* Mobile Hamburger Trigger */}
+        <div className="md:hidden flex items-center mt-3" ref={menuRef}>
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="p-2 bg-black text-white rounded-full shadow-lg transition-transform active:scale-90 z-[110]"
+          >
+            <div className="transition-all duration-300 ease-in-out">
+              {menuOpen ? <X size={24} weight="bold" /> : <List size={24} weight="bold" />}
+            </div>
+          </button>
+
+          {/* Mobile Dropdown Menu with Animation */}
+          <div
+            className={`absolute right-0 top-14 w-48 bg-white rounded-2xl shadow-xl border border-gray-100 z-[100] overflow-hidden transition-all duration-300 ease-out origin-top-right
+              ${menuOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-90 pointer-events-none'}`}
+          >
+            <div className="flex flex-col">
+              <button onClick={() => { navigate("/download"); setMenuOpen(false); }} className="flex items-center gap-3 px-4 py-4 hover:bg-gray-50 text-gray-700 transition-colors border-b border-gray-50 active:bg-gray-100">
+                <DownloadSimpleIcon size={20} />
+                <span className="text-sm font-medium">Download</span>
+              </button>
+              <button onClick={handleMail} className="flex items-center gap-3 px-4 py-4 hover:bg-gray-50 text-gray-700 transition-colors border-b border-gray-50 active:bg-gray-100">
+                <Bug size={20} />
+                <span className="text-sm font-medium">Report Issue</span>
+              </button>
+              <button onClick={handleSignOut} className="flex items-center gap-3 px-4 py-4 hover:bg-red-50 text-red-600 transition-colors active:bg-red-100">
+                <SignOut size={20} />
+                <span className="text-sm font-medium">Sign Out</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -137,8 +158,8 @@ export default function Dashboard() {
             <button
               key={f}
               onClick={() => setActive(f)}
-              className={`whitespace-nowrap px-3 py-1 rounded-full text-sm font-medium shadow-sm cursor-pointer 
-                ${active === f ? "bg-black text-white" : "bg-white text-gray-700"}`}
+              className={`whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium shadow-sm cursor-pointer transition-all
+                ${active === f ? "bg-black text-white scale-105" : "bg-white text-gray-700 hover:bg-gray-50"}`}
             >
               {f}
             </button>
@@ -146,7 +167,6 @@ export default function Dashboard() {
         </div>
 
         {loading ? (
-          /* Loading Placeholder */
           <div className="flex flex-col items-center justify-center py-20">
             <CircleNotch size={40} className="animate-spin text-gray-400" />
             <p className="text-gray-500 mt-4 font-medium">Fetching staff directory...</p>
@@ -159,7 +179,7 @@ export default function Dashboard() {
                 <button
                   key={s.id}
                   onClick={() => setSelected(s)}
-                  className="relative w-full text-left bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition cursor-pointer flex items-start gap-4"
+                  className="relative w-full text-left bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-start gap-4"
                 >
                   <div className="shrink-0 h-full flex items-center">
                     <img
@@ -184,7 +204,7 @@ export default function Dashboard() {
                       <span className="truncate">{s.location || "N/A"}</span>
                     </div>
                     <div className="mt-3 absolute right-5 bottom-3.5 gap-3">
-                      <div className={`inline-flex items-center justify-center px-3 py-1 rounded-full ${meta.bg}`}>
+                      <div className={`inline-flex items-center justify-center px-3 py-1 rounded-full ${meta.bg} transition-colors duration-500`}>
                         <span className={`text-xs font-medium ${meta.text} whitespace-nowrap`}>{meta.label}</span>
                       </div>
                     </div>
@@ -196,7 +216,7 @@ export default function Dashboard() {
         )}
 
         {!loading && filtered.length === 0 && (
-          <div className="bg-white rounded-2xl p-6 text-center text-gray-500 mt-6">No staff found.</div>
+          <div className="bg-white rounded-2xl p-6 text-center text-gray-500 mt-6 animate-pulse">No staff found.</div>
         )}
       </main>
 
@@ -205,12 +225,12 @@ export default function Dashboard() {
           staff={selected}
           onClose={() => setSelected(null)}
           onViewMap={() => {
-            handleViewMap(selected);
+            alert(`Open map for ${selected.name} — location: ${selected.location}`);
             setSelected(null);
           }}
         />
       )}
-      <p className="fixed bottom-0 left-0 right-0 text-xs text-center text-gray-400 w-screen py-2 bg-gray-50/80">Beta version</p>
+      <p className="fixed bottom-0 left-0 right-0 text-xs text-center text-gray-400 w-screen py-2 bg-gray-50/80 backdrop-blur-sm">Beta version</p>
     </div>
   );
 }
