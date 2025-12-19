@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Download as DownloadIcon, Phone, Monitor, AppWindow } from "@phosphor-icons/react";
+import { Download as DownloadIcon, AndroidLogo, AppleLogo, Phone,  Monitor, AppWindow } from "@phosphor-icons/react";
 
 const Download = () => {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -141,7 +141,7 @@ const Download = () => {
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                  <Phone size={24} className="text-green-600" />
+                  <AndroidLogo size={24} className="text-green-600" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-800">Android</h3>
               </div>
@@ -159,7 +159,7 @@ const Download = () => {
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Phone size={24} className="text-blue-600" />
+                  <AppleLogo size={24} className="text-blue-600" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-800">iOS / iPadOS</h3>
               </div>

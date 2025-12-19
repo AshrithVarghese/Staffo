@@ -3,6 +3,16 @@ import { useEffect, useMemo, useState } from "react";
 import { MagnifyingGlass, MapPin } from "@phosphor-icons/react";
 import { supabase } from "../utils/supabase";
 
+/* Convert 24hr time to 12hr format */
+function format12Hour(timeStr) {
+  if (!timeStr) return "";
+  const time24 = timeStr.slice(0, 5); // HH:MM
+  const [hours, minutes] = time24.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hours12 = hours % 12 || 12;
+  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
+}
+
 /* weekday-aware period times */
 function getPeriodTimeMap(dayKey) {
   const monThu = [
@@ -48,6 +58,25 @@ function meetingOverlapsPeriod(meeting, dateIso, periodTime) {
   const pStart = parseTimeOnDate(dateIso, periodTime.start);
   const pEnd = parseTimeOnDate(dateIso, periodTime.end);
   return mStart < pEnd && mEnd > pStart;
+}
+
+function superStatusOverlapsPeriod(superStatus, dateIso, periodTime) {
+  const sStart = parseTimeOnDate(dateIso, superStatus.start_time);
+  const sEnd = parseTimeOnDate(dateIso, superStatus.end_time);
+  const pStart = parseTimeOnDate(dateIso, periodTime.start);
+  const pEnd = parseTimeOnDate(dateIso, periodTime.end);
+  return sStart < pEnd && sEnd > pStart;
+}
+
+function leaveOverlapsPeriod(leave, dateIso, periodTime) {
+  // leave has start_at and end_at as timestamps with timezone
+  const leaveStart = new Date(leave.start_at);
+  const leaveEnd = new Date(leave.end_at);
+  const pStart = parseTimeOnDate(dateIso, periodTime.start);
+  const pEnd = parseTimeOnDate(dateIso, periodTime.end);
+  
+  // Check if leave overlaps with the period on this specific date
+  return leaveStart <= pEnd && leaveEnd >= pStart;
 }
 
 function busyPeriodsFromTimetableRow(timetableRow, dayKey) {
@@ -247,16 +276,28 @@ export default function Availability() {
                   <strong>Class</strong> — {item}
                 </div>
               );
+            } else if (item && typeof item === "object" && item.type === "super_status") {
+              return (
+                <div key={idx} className="text-xs text-gray-700">
+                  <strong className="text-red-500">Super Status</strong> — {item.description} ({format12Hour(item.start_time)} - {format12Hour(item.end_time)})
+                </div>
+              );
+            } else if (item && typeof item === "object" && item.type === "leave") {
+              return (
+                <div key={idx} className="text-xs text-gray-700">
+                  <strong className="text-orange-600">Staff Leave</strong> — {item.reason}
+                </div>
+              );
             } else if (item && typeof item === "object" && item.type === "meeting") {
               return (
                 <div key={idx} className="text-xs text-gray-700">
-                  <strong>Meeting</strong> — {item.title} ({item.start_time.slice(0, 5)} - {item.end_time.slice(0, 5)}) @ {item.location || "—"}
+                  <strong>Meeting</strong> — {item.title} ({format12Hour(item.start_time)} - {format12Hour(item.end_time)}) @ {item.location || "—"}
                 </div>
               );
             } else if (item && typeof item === "object") {
               return (
                 <div key={idx} className="text-xs text-gray-700">
-                  <strong>Meeting</strong> — {item.title || "Untitled"} ({(item.start_time || "").slice(0, 5)} - {(item.end_time || "").slice(0, 5)}) @ {item.location || "—"}
+                  <strong>Meeting</strong> — {item.title || "Untitled"} ({format12Hour(item.start_time)} - {format12Hour(item.end_time)}) @ {item.location || "—"}
                 </div>
               );
             } else {
@@ -274,10 +315,22 @@ export default function Availability() {
       );
     }
     if (details.meta && typeof details.meta === "object") {
-      const m = details.meta;
-      return (
+      const m = details.meta;      if (m.type === "super_status") {
+        return (
+          <div className="text-xs text-gray-700">
+            <strong className="text-red-500">Super Status</strong> — {m.description} ({format12Hour(m.start_time)} - {format12Hour(m.end_time)})
+          </div>
+        );
+      }
+      if (m.type === "leave") {
+        return (
+          <div className="text-xs text-gray-700">
+            <strong className="text-orange-600">Staff Leave</strong> — {m.reason}
+          </div>
+        );
+      }      return (
         <div className="text-xs text-gray-700">
-          <strong>Meeting</strong> — {m.title || "Untitled"} ({(m.start_time || "").slice(0, 5)} - {(m.end_time || "").slice(0, 5)}) @ {m.location || "—"}
+          <strong>Meeting</strong> — {m.title || "Untitled"} ({format12Hour(m.start_time)} - {format12Hour(m.end_time)}) @ {m.location || "—"}
         </div>
       );
     }
@@ -394,6 +447,45 @@ export default function Availability() {
 
     setMeetingsByStaff(meetingsMap);
 
+    // 4.5) fetch super_statuses for selected staff within date range
+    const ssRes = await supabase
+      .from("super_statuses")
+      .select("id, staff_id, status_date, start_time, end_time, description")
+      .in("staff_id", selectedStaffIds)
+      .gte("status_date", startDate)
+      .lte("status_date", endDate);
+    
+    if (ssRes.error) console.error("Super statuses fetch error:", ssRes.error);
+    
+    // Build superStatusesMap per staff
+    const superStatusesMap = {};
+    selectedStaffIds.forEach((id) => (superStatusesMap[id] = []));
+    (ssRes.data || []).forEach((ss) => {
+      if (superStatusesMap[ss.staff_id]) {
+        superStatusesMap[ss.staff_id].push(ss);
+      }
+    });
+
+    // 4.6) fetch holidays (personal leaves) for selected staff within date range
+    const holidaysRes = await supabase
+      .from("holidays")
+      .select("id, staff_id, reason, start_at, end_at")
+      .in("staff_id", selectedStaffIds)
+      .not("staff_id", "is", null)
+      .lte("start_at", `${endDate}T23:59:59Z`)
+      .gte("end_at", `${startDate}T00:00:00Z`);
+    
+    if (holidaysRes.error) console.error("Holidays fetch error:", holidaysRes.error);
+    
+    // Build holidaysMap per staff
+    const holidaysMap = {};
+    selectedStaffIds.forEach((id) => (holidaysMap[id] = []));
+    (holidaysRes.data || []).forEach((holiday) => {
+      if (holidaysMap[holiday.staff_id]) {
+        holidaysMap[holiday.staff_id].push(holiday);
+      }
+    });
+
     // 5) compute busy periods per date separately
     const perDateDataLocal = {};
 
@@ -409,7 +501,10 @@ export default function Availability() {
         const sBusy = new Set();
         const ttRow = ttMap[sid];
 
-        // Check timetable busy periods for this date
+        // Priority hierarchy: super_status > leave > meeting > class
+        // Check in reverse order (lowest to highest priority)
+
+        // 1. Check timetable busy periods for this date (lowest priority)
         const ttBusy = busyPeriodsFromTimetableRow(ttRow, dayKey);
         ttBusy.forEach((p) => {
           sBusy.add(p);
@@ -419,7 +514,7 @@ export default function Availability() {
           };
         });
 
-        // Check meetings for this date
+        // 2. Check meetings for this date
         const staffMeetings = meetingsMap[sid] || [];
         staffMeetings.filter(m => m.meeting_date === dateIso).forEach((m) => {
           for (const pt of PERIOD_TIME_MAP) {
@@ -431,11 +526,67 @@ export default function Availability() {
               if (prev) {
                 if (!Array.isArray(prev.meta)) prev.meta = [prev.meta];
                 prev.meta.push(meetingInfo);
-                prev.reason = "mixed";
+                prev.reason = "meeting"; // Meetings override classes
               } else {
                 perPeriodDetailsLocal[pt.period][sid] = {
                   reason: "meeting",
                   meta: meetingInfo,
+                };
+              }
+            }
+          }
+        });
+
+        // 3. Check staff leaves (holidays) for this date
+        const staffLeaves = holidaysMap[sid] || [];
+        staffLeaves.forEach((leave) => {
+          for (const pt of PERIOD_TIME_MAP) {
+            if (leaveOverlapsPeriod(leave, dateIso, pt)) {
+              sBusy.add(pt.period);
+              const prev = perPeriodDetailsLocal[pt.period][sid];
+              const leaveInfo = { type: "leave", leaveId: leave.id, reason: leave.reason };
+
+              if (prev) {
+                if (!Array.isArray(prev.meta)) prev.meta = [prev.meta];
+                prev.meta.push(leaveInfo);
+                // If previous was meeting/class, upgrade to leave
+                // If previous was super_status or leave, keep highest priority
+                if (prev.reason !== "super_status" && prev.reason !== "leave") {
+                  prev.reason = "leave";
+                }
+              } else {
+                perPeriodDetailsLocal[pt.period][sid] = {
+                  reason: "leave",
+                  meta: leaveInfo,
+                };
+              }
+            }
+          }
+        });
+
+        // 4. Check super_statuses for this date (equal priority with leave)
+        const staffSuperStatuses = superStatusesMap[sid] || [];
+        staffSuperStatuses.filter(ss => ss.status_date === dateIso).forEach((ss) => {
+          for (const pt of PERIOD_TIME_MAP) {
+            if (superStatusOverlapsPeriod(ss, dateIso, pt)) {
+              sBusy.add(pt.period);
+              const prev = perPeriodDetailsLocal[pt.period][sid];
+              const superStatusInfo = { type: "super_status", statusId: ss.id, description: ss.description, start_time: ss.start_time, end_time: ss.end_time };
+
+              if (prev) {
+                if (!Array.isArray(prev.meta)) prev.meta = [prev.meta];
+                prev.meta.push(superStatusInfo);
+                // If previous was meeting/class, upgrade to super_status
+                // If previous was leave, keep both (set to super_status for display priority)
+                if (prev.reason !== "super_status" && prev.reason !== "leave") {
+                  prev.reason = "super_status";
+                } else if (prev.reason === "leave") {
+                  prev.reason = "leave_super_status"; // Both exist
+                }
+              } else {
+                perPeriodDetailsLocal[pt.period][sid] = {
+                  reason: "super_status",
+                  meta: superStatusInfo,
                 };
               }
             }
@@ -670,10 +821,10 @@ export default function Availability() {
                   </button>
                 </div>
 
-                <div className="mt-3 text-xs text-gray-500">
+                {/* <div className="mt-3 text-xs text-gray-500">
                   <div>Best exact free periods: {bestPeriods.exactCommon.length ? bestPeriods.exactCommon.join(", ") : "None"}</div>
                   <div>Fallback best (max free): {bestPeriods.fallbackBest.length ? bestPeriods.fallbackBest.join(", ") : "—"}</div>
-                </div>
+                </div> */}
               </div>
             </div>
           </div>
@@ -735,7 +886,7 @@ export default function Availability() {
               <div>
                 <div className="text-sm font-medium">Period {activePeriod.period} details for {activePeriod.date}</div>
                 <div className="text-xs text-gray-500">
-                  Time: {getPeriodTimeMap(perDateData[activePeriod.date].dayKey)[activePeriod.period - 1].start.slice(0, 5)} - {getPeriodTimeMap(perDateData[activePeriod.date].dayKey)[activePeriod.period - 1].end.slice(0, 5)}
+                  Time: {format12Hour(getPeriodTimeMap(perDateData[activePeriod.date].dayKey)[activePeriod.period - 1].start)} - {format12Hour(getPeriodTimeMap(perDateData[activePeriod.date].dayKey)[activePeriod.period - 1].end)}
                 </div>
               </div>
               <div>

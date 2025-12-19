@@ -95,7 +95,7 @@ export default function Dashboard() {
         <div className="hidden md:flex items-center gap-1">
           <div className="rounded-full bg-black flex items-center justify-center px-2 py-1 mt-3 text-white cursor-pointer hover:bg-gray-800 transition-colors" onClick={() => navigate("/download")}>
             <DownloadSimpleIcon size={18} />
-            <p className="m-1 text-xs">Download</p>
+            <p className="m-1 text-xs">Download App</p>
           </div>
           <div className="rounded-full bg-black flex items-center justify-center px-2 py-1 mt-3 text-white cursor-pointer hover:bg-gray-800 transition-colors" onClick={handleMail}>
             <Bug size={18} />
@@ -125,7 +125,7 @@ export default function Dashboard() {
             <div className="flex flex-col">
               <button onClick={() => { navigate("/download"); setMenuOpen(false); }} className="flex items-center gap-3 px-4 py-4 hover:bg-gray-50 text-gray-700 transition-colors border-b border-gray-50 active:bg-gray-100">
                 <DownloadSimpleIcon size={20} />
-                <span className="text-sm font-medium">Download</span>
+                <span className="text-sm font-medium">Download App</span>
               </button>
               <button onClick={handleMail} className="flex items-center gap-3 px-4 py-4 hover:bg-gray-50 text-gray-700 transition-colors border-b border-gray-50 active:bg-gray-100">
                 <Bug size={20} />
@@ -230,7 +230,7 @@ export default function Dashboard() {
           }}
         />
       )}
-      <p className="fixed bottom-0 left-0 right-0 text-xs text-center text-gray-400 w-screen py-2 bg-gray-50/80 backdrop-blur-sm">Beta version</p>
+      <p className="fixed bottom-0 left-0 right-0 text-xs text-center text-gray-400 w-screen z-1000">Beta version</p>
     </div>
   );
 }

@@ -51,7 +51,7 @@ const NavBar = () => {
   }
 
   return (
-    <nav className="fixed bottom-5 left-5 right-5 rounded-full bg-black border-t border-gray-200 z-50 px-4 py-2 flex justify-between items-center gap-2">
+    <nav className="fixed bottom-4 left-5 right-5 rounded-full bg-black border-t border-gray-200 z-50 px-4 py-2 flex justify-between items-center gap-2">
       
       <NavLink to="/dashboard" className="relative flex flex-col items-center justify-center flex-1 py-1">
         {({ isActive }) => (
