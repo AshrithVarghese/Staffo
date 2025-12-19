@@ -130,7 +130,7 @@ const Admins = () => {
         {/* HOLIDAY MANAGEMENT SECTION */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-center gap-2 mb-4">
-            <CalendarPlus size={24} className="text-blue-600" />
+            <CalendarPlus size={24} className="text-black" />
             <h2 className="text-lg font-semibold text-gray-800">Global Holiday Management</h2>
           </div>
 
@@ -170,7 +170,7 @@ const Admins = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="md:col-span-2 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="md:col-span-2 bg-black text-white font-semibold py-3 rounded-xl"
             >
               {isSubmitting ? "Processing..." : "Set Global Holiday"}
             </button>
