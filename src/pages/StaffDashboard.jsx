@@ -174,22 +174,24 @@ function OnLeaveModal({ staffId, onClose, onSuccess }) {
   const [startTime, setStartTime] = useState("09:00");
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [endTime, setEndTime] = useState("17:00");
+  const [reason, setReason] = useState(""); // New state for reason
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSave = async () => {
     if (!startDate || !endDate) return alert("Please select dates.");
+    if (!reason.trim()) return alert("Please provide a reason for the leave."); // Validation
+
     setIsSubmitting(true);
 
     const startTimestamp = `${startDate}T${startTime}:00`;
     const endTimestamp = `${endDate}T${endTime}:00`;
 
-    // Note table name: holidays
     const { error } = await supabase.from("holidays").insert([
       {
         staff_id: staffId,
         start_at: startTimestamp,
         end_at: endTimestamp,
-        reason: 'Staff Leave'
+        reason: reason.trim() // Saving the custom reason
       }
     ]);
 
@@ -211,6 +213,18 @@ function OnLeaveModal({ staffId, onClose, onSuccess }) {
           <h2 className="text-lg font-semibold">Schedule Your Leave</h2>
         </div>
         <div className="space-y-4">
+          {/* Reason Input */}
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Reason for Leave</label>
+            <input
+              type="text"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="e.g. Sick Leave, Personal Work, Duty Leave"
+              className="w-full mt-1 px-3 py-2 rounded-xl border border-gray-300 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+            />
+          </div>
+
           <div>
             <label className="text-xs font-bold text-gray-500 uppercase ml-1">Leave Starts</label>
             <div className="flex gap-2 mt-1">
