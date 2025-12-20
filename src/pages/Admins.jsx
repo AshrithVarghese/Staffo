@@ -197,8 +197,12 @@ const Admins = () => {
         <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-center gap-2 mb-4">
             <Calendar size={24} className="text-gray-700" weight="bold" />
-            <h2 className="text-lg font-bold text-gray-800">Timetable Sync (Saturday)</h2>
+            <h2 className="text-lg font-bold text-gray-800">Set Saturday's Timetable</h2>
           </div>
+          <p className="text-xs text-gray-500 mb-4 ml-8">
+            Duplicate a weekday's schedule to Saturday
+          </p>
+
           <div className="flex flex-col md:flex-row gap-4 items-end">
             <div className="flex-1 w-full">
               <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">Source Weekday</label>

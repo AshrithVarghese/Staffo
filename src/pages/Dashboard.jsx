@@ -199,10 +199,15 @@ export default function Dashboard() {
                         <div className="text-sm text-gray-500 mt-1">{s.dept}</div>
                       </div>
                     </div>
+
+                    {/* UPDATED LOCATION LOGIC */}
                     <div className="mt-3 flex items-center text-sm text-gray-500 gap-0.5 mb-6">
                       <MapPin size={18} />
-                      <span className="truncate">{s.location || "N/A"}</span>
+                      <span className="truncate">
+                        {s.status === 'on_leave' ? "Staff on Leave" : (s.location || "N/A")}
+                      </span>
                     </div>
+
                     <div className="mt-3 absolute right-5 bottom-3.5 gap-3">
                       <div className={`inline-flex items-center justify-center px-3 py-1 rounded-full ${meta.bg} transition-colors duration-500`}>
                         <span className={`text-xs font-medium ${meta.text} whitespace-nowrap`}>{meta.label}</span>
