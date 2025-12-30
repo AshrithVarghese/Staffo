@@ -1,6 +1,9 @@
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 import XLSX from 'xlsx';
+import fs from 'fs';
+import path from 'path';
+import fetch from 'node-fetch';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -9,8 +12,8 @@ const supabase = createClient(
 
 // -------------------- CONFIG --------------------
 const FILE = './college.xlsx';
-const STAFF_SHEET = 'Sheet1';     // CHANGE if needed
-const TIMETABLE_SHEET = 'Sheet1'; // same sheet in your case
+const PHOTO_DIR = './photos'; // local photo folder
+const STAFF_SHEET = 'Sheet1';
 
 const DAY_MAP = {
   M: 'monday',
@@ -31,7 +34,6 @@ function emptyWeek() {
     saturday: Array(7).fill(null),
   };
 }
-
 // -------------------- LOAD EXCEL --------------------
 const workbook = XLSX.readFile(FILE);
 const sheet = XLSX.utils.sheet_to_json(workbook.Sheets[STAFF_SHEET]);
@@ -40,11 +42,55 @@ if (!sheet.length) {
   throw new Error('Excel sheet empty or wrong sheet name');
 }
 
+// -------------------- HELPERS --------------------
+async function uploadPhoto(photoValue, staffId) {
+  if (!photoValue) return null;
+
+  let buffer;
+  let ext = 'jpg';
+
+  // CASE 1: URL
+  if (photoValue.startsWith('http')) {
+    const res = await fetch(photoValue);
+    if (!res.ok) throw new Error('Failed to fetch photo URL');
+    buffer = Buffer.from(await res.arrayBuffer());
+    ext = photoValue.split('.').pop().split('?')[0];
+  }
+
+  // CASE 2: Local file
+  else {
+    const filePath = path.join(PHOTO_DIR, photoValue);
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`Photo file not found: ${photoValue}`);
+    }
+    buffer = fs.readFileSync(filePath);
+    ext = path.extname(photoValue).replace('.', '');
+  }
+
+  const storagePath = `${staffId}/avatar.${ext}`;
+
+  const { error } = await supabase.storage
+    .from('avatars')
+    .upload(storagePath, buffer, {
+      upsert: true,
+      contentType: `image/${ext}`,
+    });
+
+  if (error) throw error;
+
+  const { data } = supabase.storage
+    .from('avatars')
+    .getPublicUrl(storagePath);
+
+  return data.publicUrl;
+}
+
 // -------------------- MAIN --------------------
 async function run() {
   for (const row of sheet) {
     const email = row['Mail id']?.trim();
     const name = row['Staff Name']?.trim();
+    const photo = row['Photo']; // NEW COLUMN
 
     if (!email || !name) {
       console.warn('⏭ Skipping row (missing email/name)');
@@ -104,7 +150,24 @@ async function run() {
     }
 
     // -----------------------------------
-    // 3. BUILD TIMETABLE
+    // 3. UPLOAD PHOTO (NEW)
+    // -----------------------------------
+    try {
+      const photoUrl = await uploadPhoto(photo, staffId);
+      if (photoUrl) {
+        await supabase
+          .from('staff')
+          .update({ photo_url: photoUrl })
+          .eq('id', staffId);
+
+        console.log('✔ Photo uploaded');
+      }
+    } catch (e) {
+      console.warn(`⚠ Photo skipped: ${e.message}`);
+    }
+
+    // -----------------------------------
+    // 4. BUILD TIMETABLE
     // -----------------------------------
     const week = emptyWeek();
 
@@ -121,14 +184,14 @@ async function run() {
     }
 
     // -----------------------------------
-    // 4. UPSERT TIMETABLE
+    // 5. UPSERT TIMETABLE
     // -----------------------------------
     const { error: ttErr } = await supabase
       .from('timetable')
-      .upsert({
-        staff_id: staffId,
-        ...week,
-      }, { onConflict: 'staff_id' });
+      .upsert(
+        { staff_id: staffId, ...week },
+        { onConflict: 'staff_id' }
+      );
 
     if (ttErr) {
       console.error('❌ Timetable error:', ttErr.message);
