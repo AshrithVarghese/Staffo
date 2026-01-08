@@ -3,6 +3,7 @@ import { MagnifyingGlass, MapPin, Bug, SignOut, CircleNotch, DownloadSimpleIcon,
 import StaffPopup from "../components/StaffPopup.jsx";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../utils/supabase";
+import { logStaffActivity } from "../utils/logger.js";
 
 const FILTERS = ["All", "OFFICE", "BSH", "CSE", "CY", "AD", "EEE", "ME", "CE", "ECE", "MR", "RA"];
 const STATUS_META = {
@@ -26,14 +27,41 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const { data, error } = await supabase.from("staff").select("*");
-      if (error) console.error("Supabase error:", error);
-      else setStaff(data || []);
-      setLoading(false);
-    };
+const load = async () => {
+    setLoading(true);
+    
+    // Get Session
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session?.user) {
+      // Get Role
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user.id)
+        .single();
 
+      // If Staff, log the page load
+      if (profile?.role === "staff") {
+        const { data: sData } = await supabase
+          .from("staff")
+          .select("id")
+          .eq("profile_id", session.user.id)
+          .single();
+
+        if (sData) {
+          // LOG PAGE LOAD HERE
+          await logStaffActivity(sData.id, "PAGE_LOAD", { page: "Dashboard" });
+        }
+      }
+    }
+
+    // Existing load logic...
+    const { data, error } = await supabase.from("staff").select("*");
+    if (error) console.error("Supabase error:", error);
+    else setStaff(data || []);
+    setLoading(false);
+  };
     load();
 
     const channel = supabase
