@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../utils/supabase";
 import { Clock, Trash, X, CalendarPlus, CalendarBlank } from "@phosphor-icons/react";
+import { logStaffActivity } from "../utils/logger";
 
 export default function SuperStatusManager({ staffId, onClose }) {
   const [loading, setLoading] = useState(false);
@@ -42,7 +43,7 @@ export default function SuperStatusManager({ staffId, onClose }) {
         description: formData.description,
       },
     ]);
-
+    await logStaffActivity(staffId, "SUPER_STATUS_ADDED", { date: formData.status_date, desc: formData.description });
     if (!error) {
       // Clear inputs but keep the date the same for multiple entries on one day
       setFormData({ ...formData, start_time: "", end_time: "", description: "" });
@@ -54,6 +55,7 @@ export default function SuperStatusManager({ staffId, onClose }) {
   const handleDelete = async (id) => {
     await supabase.from("super_statuses").delete().eq("id", id);
     fetchSuperStatuses();
+    await logStaffActivity(staffId, "SUPER_STATUS_DELETED", { status_id: id });
   };
 
   return (

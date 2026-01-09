@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "../utils/supabase";
 import { MagnifyingGlass } from "@phosphor-icons/react";
+import { logStaffActivity } from "../utils/logger";
 
 const FILTERS = ["All", "OFFICE", "BSH", "CSE", "CY", "AD", "EEE", "ME", "CE", "ECE", "MR", "RA"];
 const LOCATION_SUGGESTIONS = [
@@ -141,7 +142,7 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
         })
         .select()
         .single();
-
+await logStaffActivity(staffId, "MEETING_CREATED", { title: meetingTitle });
       if (error) {
         alert("Insert error: " + error.message);
         return;
@@ -165,6 +166,7 @@ export default function MeetingForm({ staffId, meeting, onClose }) {
           location,
         })
         .eq("id", meetingId);
+await logStaffActivity(staffId, "MEETING_UPDATED", { title: meetingTitle });
 
       if (error) {
         alert("Update error: " + error.message);
