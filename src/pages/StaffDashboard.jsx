@@ -5,13 +5,16 @@ import {
   Plus,
   ClockAfternoon,
   CalendarBlank,
-  CircleNotch
+  CircleNotch,
+  X
 } from "@phosphor-icons/react";
 import { supabase } from "../utils/supabase";
 import Timetable from "../components/Timetable";
 import PhotoUploader from "../components/PhotoUploader";
 import SuperStatusManager from "../components/StaffStatusManager.jsx";
 import { useNavigate } from "react-router-dom";
+import { logStaffActivity } from "../utils/logger.js";
+import { Trash } from "@phosphor-icons/react/dist/ssr";
 
 const STATUS_META = {
   available: { label: "Available", bg: "bg-green-100", text: "text-green-800", dot: "bg-green-500" },
@@ -73,6 +76,7 @@ export default function StaffDashboard() {
 
   const updateStatus = async (val) => {
     if (val === 'on_leave') return setShowLeaveModal(true);
+    await logStaffActivity(staff.id, "STATUS_UPDATE", { new_status: val });
     setStaff(prev => ({ ...prev, status: val, manual_override: true }));
     await supabase.from("staff").update({ status: val, manual_override: true }).eq("id", staff.id);
   };
@@ -174,15 +178,30 @@ function OnLeaveModal({ staffId, onClose, onSuccess }) {
   const [startTime, setStartTime] = useState("09:00");
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [endTime, setEndTime] = useState("17:00");
-  const [reason, setReason] = useState(""); // New state for reason
+  const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [existingLeaves, setExistingLeaves] = useState([]);
+
+  // Fetch existing leaves on load
+  useEffect(() => {
+    fetchExistingLeaves();
+  }, [staffId]);
+
+  const fetchExistingLeaves = async () => {
+    const { data, error } = await supabase
+      .from("holidays")
+      .select("*")
+      .eq("staff_id", staffId)
+      .order("start_at", { ascending: false });
+
+    if (!error) setExistingLeaves(data);
+  };
 
   const handleSave = async () => {
     if (!startDate || !endDate) return alert("Please select dates.");
-    if (!reason.trim()) return alert("Please provide a reason for the leave."); // Validation
+    if (!reason.trim()) return alert("Please provide a reason.");
 
     setIsSubmitting(true);
-
     const startTimestamp = `${startDate}T${startTime}:00`;
     const endTimestamp = `${endDate}T${endTime}:00`;
 
@@ -191,60 +210,117 @@ function OnLeaveModal({ staffId, onClose, onSuccess }) {
         staff_id: staffId,
         start_at: startTimestamp,
         end_at: endTimestamp,
-        reason: reason.trim() // Saving the custom reason
+        reason: reason.trim()
       }
     ]);
 
     if (!error) {
+      // Set manual override so the DB function respects the immediate change
       await supabase.from("staff").update({ status: "on_leave", manual_override: true }).eq("id", staffId);
+      setReason(""); // Clear input
+      fetchExistingLeaves(); // Refresh list
       onSuccess();
     } else {
-      console.error("Supabase Error:", error);
       alert(`Error: ${error.message}`);
     }
     setIsSubmitting(false);
   };
 
+  const deleteLeave = async (id) => {
+    if (!confirm("Cancel this leave?")) return;
+    const { error } = await supabase.from("holidays").delete().eq("id", id);
+    if (!error) fetchExistingLeaves();
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-5 backdrop-blur-sm">
-      <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-lg">
-        <div className="flex items-center gap-2 mb-4 text-gray-800">
-          <CalendarBlank size={24} weight="bold" />
-          <h2 className="text-lg font-semibold">Schedule Your Leave</h2>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      {/* Modal Container: Max height set to 90% of screen */}
+      <div className="bg-white rounded-3xl w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+        
+        {/* Header: Fixed */}
+        <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+          <h3 className="text-xl font-bold text-gray-900">Leave Management</h3>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <X size={20} className="text-gray-500" />
+          </button>
         </div>
-        <div className="space-y-4">
-          {/* Reason Input */}
-          <div>
-            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Reason for Leave</label>
-            <input
-              type="text"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="e.g. Sick Leave, Personal Work, Duty Leave"
-              className="w-full mt-1 px-3 py-2 rounded-xl border border-gray-300 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-            />
+
+        {/* Content: Scrollable Area */}
+        <div className="p-6 overflow-y-auto flex-1 space-y-6 scrollbar-thin scrollbar-thumb-gray-200">
+          
+          {/* Section 1: Create New Leave */}
+          <div className="space-y-4">
+            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Schedule New Leave</h4>
+            
+            <div className="space-y-3 bg-gray-50 p-4 rounded-2xl border border-gray-100">
+              <div>
+                <label className="text-xs font-medium text-gray-500 ml-1">Reason</label>
+                <input 
+                  value={reason} 
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="e.g. Personal Work"
+                  className="w-full mt-1 px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-black outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-gray-500 ml-1">Starts</label>
+                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full mt-1 px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-black outline-none" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-500 ml-1">Time</label>
+                  <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full mt-1 px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-black outline-none" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-gray-500 ml-1">Ends</label>
+                  <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full mt-1 px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-black outline-none" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-500 ml-1">Time</label>
+                  <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full mt-1 px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-black outline-none" />
+                </div>
+              </div>
+
+              <button 
+                onClick={handleSave}
+                disabled={isSubmitting}
+                className="w-full py-3 bg-black text-white rounded-xl font-bold text-sm hover:bg-gray-800 transition-all disabled:opacity-50"
+              >
+                {isSubmitting ? "Saving..." : "Apply for Leave"}
+              </button>
+            </div>
           </div>
 
-          <div>
-            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Leave Starts</label>
-            <div className="flex gap-2 mt-1">
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="flex-1 px-3 py-2 rounded-xl border border-gray-300 bg-gray-50 text-sm" />
-              <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-24 px-2 py-2 rounded-xl border border-gray-300 bg-gray-50 text-sm" />
-            </div>
+          {/* Section 2: List Existing Leaves */}
+          <div className="space-y-3 pb-4">
+            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Scheduled History</h4>
+            {existingLeaves.length === 0 ? (
+              <p className="text-center text-sm text-gray-400 py-4 italic">No leave history found.</p>
+            ) : (
+              <div className="space-y-2">
+                {existingLeaves.map((leave) => (
+                  <div key={leave.id} className="p-3 border border-gray-100 rounded-2xl flex justify-between items-center group hover:border-gray-300 transition-all">
+                    <div>
+                      <p className="text-sm font-bold text-gray-800">{leave.reason}</p>
+                      <p className="text-[10px] text-gray-400">
+                        {new Date(leave.start_at).toLocaleDateString()} - {new Date(leave.end_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <button 
+                      onClick={() => deleteLeave(leave.id)}
+                      className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
+                    >
+                      <Trash size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          <div>
-            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Leave Ends</label>
-            <div className="flex gap-2 mt-1">
-              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="flex-1 px-3 py-2 rounded-xl border border-gray-300 bg-gray-50 text-sm" />
-              <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-24 px-2 py-2 rounded-xl border border-gray-300 bg-gray-50 text-sm" />
-            </div>
-          </div>
-        </div>
-        <div className="flex justify-end mt-6 gap-3">
-          <button onClick={onClose} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium">Cancel</button>
-          <button onClick={handleSave} disabled={isSubmitting} className="px-4 py-2 bg-black text-white rounded-xl text-sm font-medium flex items-center gap-2">
-            {isSubmitting ? <CircleNotch className="animate-spin" /> : "Confirm Leave"}
-          </button>
         </div>
       </div>
     </div>

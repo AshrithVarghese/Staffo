@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../utils/supabase";
+import { logStaffActivity } from "../utils/logger";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -72,6 +73,7 @@ export default function Timetable({ staffId, onClose }) {
     };
 
     await supabase.from("timetable").update(payload).eq("staff_id", staffId);
+    await logStaffActivity(staffId, "TIMETABLE_UPDATE");
     onClose();
   };
 
