@@ -167,7 +167,7 @@ const Admins = () => {
         )}
 
         {/* 1. CAMPUS AVAILABILITY */}
-        <section className="rounded-[32px] bg-white p-6 shadow-sm border border-gray-100">
+        <section className="rounded-4xl bg-white p-6 shadow-sm border border-gray-100">
           <div className="mb-6 flex items-center gap-3">
             <div className="rounded-xl p-2"><Calendar size={20} weight="fill" color='black' /></div>
             <h2 className="font-bold">Campus Availability</h2>
@@ -206,7 +206,7 @@ const Admins = () => {
         </section>
 
         {/* 2. PERSONNEL LEAVE LOG (SCROLLABLE) */}
-        <section className="rounded-[32px] bg-white p-6 shadow-sm border border-gray-100">
+        <section className="rounded-4xl bg-white p-6 shadow-sm border border-gray-100">
           <div className="mb-6 flex items-center gap-3">
             <div className="rounded-xl p-2 "><Users size={20} weight="fill" color='black' /></div>
             <h2 className="font-bold">Personnel Leave Log</h2>
@@ -234,7 +234,7 @@ const Admins = () => {
         </section>
 
         {/* 3. TIMETABLE SYNC */}
-        <section className="rounded-[32px] bg-white p-6 shadow-sm border border-gray-100 mb-5">
+        <section className="rounded-4xl bg-white p-6 shadow-sm border border-gray-100 mb-5">
           <div className="mb-4 flex items-center gap-3">
             <div className="rounded-xl p-2"><Clock size={20} weight="fill" color='black'/></div>
             <h2 className="font-bold">Saturday Sync</h2>
