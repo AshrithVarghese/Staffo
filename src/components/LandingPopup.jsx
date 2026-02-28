@@ -80,7 +80,7 @@ export default function LandingPopup() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div
         className={`bg-white max-w-lg w-[90%] rounded-xl shadow-2xl border-l-4 ${getBorderStyle()} p-6 relative`}
       >
