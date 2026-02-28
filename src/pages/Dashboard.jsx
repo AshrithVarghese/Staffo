@@ -160,7 +160,7 @@ const handleSignOut = async () => {
 
           {/* Mobile Dropdown Menu with Animation */}
           <div
-            className={`absolute right-0 top-14 w-48 bg-white rounded-2xl shadow-xl border border-gray-100 z-100 overflow-hidden transition-all duration-300 ease-out origin-top-right
+            className={`absolute right-0 top-14 w-48 bg-white rounded-2xl shadow-xl border border-gray-100 z-40 overflow-hidden transition-all duration-300 ease-out origin-top-right
               ${menuOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-90 pointer-events-none'}`}
           >
             <div className="flex flex-col">
