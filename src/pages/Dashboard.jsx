@@ -3,6 +3,7 @@ import { MagnifyingGlass, MapPin, Bug, SignOut, CircleNotch, DownloadSimpleIcon,
 import StaffPopup from "../components/StaffPopup.jsx";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../utils/supabase";
+import LandingPopup from "../components/LandingPopup.jsx";
 
 const FILTERS = ["All", "OFFICE", "BSH", "CSE", "CY", "AD", "EEE", "ME", "CE", "ECE", "MR", "RA"];
 const STATUS_META = {
@@ -97,6 +98,7 @@ const handleSignOut = async () => {
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 pb-20 pt-4 font-sans">
+      <LandingPopup />
       <header className="max-w-full mx-auto mb-6 flex items-center justify-between relative">
         <div className="flex items-center gap-3">
           <img src="/staffo.png" alt="Staffo" className="w-32 cursor-pointer transition-transform active:scale-95" onClick={() => navigate("/")} />
