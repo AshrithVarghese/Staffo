@@ -3,6 +3,7 @@ import { MagnifyingGlass, MapPin, Bug, SignOut, CircleNotch, DownloadSimpleIcon,
 import StaffPopup from "../components/StaffPopup.jsx";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../utils/supabase";
+import LandingPopup from "../components/LandingPopup.jsx";
 import { logStaffActivity } from "../utils/logger.js";
 
 const FILTERS = ["All", "OFFICE", "BSH", "CSE", "CY", "AD", "EEE", "ME", "CE", "ECE", "MR", "RA"];
@@ -125,6 +126,7 @@ const handleSignOut = async () => {
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 pb-20 pt-4 font-sans">
+      <LandingPopup />
       <header className="max-w-full mx-auto mb-6 flex items-center justify-between relative">
         <div className="flex items-center gap-3">
           <img src="/staffo.png" alt="Staffo" className="w-32 cursor-pointer transition-transform active:scale-95" onClick={() => navigate("/")} />
@@ -149,7 +151,7 @@ const handleSignOut = async () => {
         <div className="md:hidden flex items-center mt-3" ref={menuRef}>
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="p-2 bg-black text-white rounded-full shadow-lg transition-transform active:scale-90 z-[110]"
+            className="p-2 bg-black text-white rounded-full shadow-lg transition-transform active:scale-90 z-110"
           >
             <div className="transition-all duration-300 ease-in-out">
               {menuOpen ? <X size={24} weight="bold" /> : <List size={24} weight="bold" />}
@@ -158,7 +160,7 @@ const handleSignOut = async () => {
 
           {/* Mobile Dropdown Menu with Animation */}
           <div
-            className={`absolute right-0 top-14 w-48 bg-white rounded-2xl shadow-xl border border-gray-100 z-[100] overflow-hidden transition-all duration-300 ease-out origin-top-right
+            className={`absolute right-0 top-14 w-48 bg-white rounded-2xl shadow-xl border border-gray-100 z-100 overflow-hidden transition-all duration-300 ease-out origin-top-right
               ${menuOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-90 pointer-events-none'}`}
           >
             <div className="flex flex-col">
