@@ -27,8 +27,9 @@ DAY_MAP = {
     "Sa": "saturday",
 }
 
+# 1. UPDATED: Now creates 8 slots per day (indices 0 to 7)
 def empty_week():
-    return {day: [None] * 7 for day in DAY_MAP.values()}
+    return {day: [None] * 8 for day in DAY_MAP.values()}
 
 # ================= LOAD AUTH USERS =================
 print("📦 Loading auth users...")
@@ -128,17 +129,33 @@ for index, row in df.iterrows():
     staff_id = staff_row.data["id"]
     print("✔ Staff upserted")
 
-    # ---------- TIMETABLE UPSERT ----------
+# ---------- TIMETABLE UPSERT (UPDATED LOGIC) ----------
     week = empty_week()
 
     for col in df.columns:
         match = re.match(r"^(M|T|W|Th|F|Sa)(\d)$", str(col))
         if match:
             day = DAY_MAP[match.group(1)]
-            idx = int(match.group(2)) - 1
+            period_num = int(match.group(2))  # Period 1 to 7 from Excel
             value = row.get(col)
-            if pd.notna(value):
-                week[day][idx] = str(value).strip()
+
+            if pd.notna(value) and str(value).strip():
+                val_str = str(value).strip()
+
+                if period_num in [1, 2, 3]:
+                    # Periods 1, 2, 3 -> Indexes 0, 1, 2
+                    week[day][period_num - 1] = val_str
+                
+                elif period_num == 4:
+                    # FRIDAY EXCEPTION: No split lunch on Friday — everyone stays at index 3 (11:40 AM slot)
+                    if day == "friday" or not re.search(r'\bS[12]\b', val_str.upper()):
+                        week[day][3] = val_str  # Index 3 (Slot 4 -> 11:40 - 12:30)
+                    else:
+                        week[day][4] = val_str  # Index 4 (Slot 5 -> 12:30 - 1:20 for S1/S2)
+                
+                elif period_num in [5, 6, 7]:
+                    # Periods 5, 6, 7 -> Indexes 5, 6, 7 (6th, 7th, 8th slots)
+                    week[day][period_num] = val_str
 
     supabase.table("timetable").upsert(
         {"staff_id": staff_id, **week},

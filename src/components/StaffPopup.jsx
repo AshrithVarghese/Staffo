@@ -4,24 +4,27 @@ import { supabase } from "../utils/supabase";
 
 /* ------------------ Helpers ------------------ */
 
+// UPDATED: Now maps 8 chronological time slots to match database index [0..7]
 function getPeriodTimeMap(dayKey) {
   const monThu = [
     { period: 1, start: "09:00:00", end: "09:50:00" },
     { period: 2, start: "09:50:00", end: "10:40:00" },
     { period: 3, start: "10:50:00", end: "11:40:00" },
-    { period: 4, start: "11:40:00", end: "12:30:00" },
-    { period: 5, start: "13:20:00", end: "14:10:00" },
-    { period: 6, start: "14:20:00", end: "15:10:00" },
-    { period: 7, start: "15:10:00", end: "16:00:00" },
+    { period: 4, start: "11:40:00", end: "12:30:00" }, // Slot 4 (S3+ Class / S1,S2 Lunch)
+    { period: 5, start: "12:30:00", end: "13:20:00" }, // Slot 5 (S1,S2 Class / S3+ Lunch)
+    { period: 6, start: "13:20:00", end: "14:10:00" },
+    { period: 7, start: "14:20:00", end: "15:10:00" },
+    { period: 8, start: "15:10:00", end: "16:00:00" },
   ];
   const fri = [
     { period: 1, start: "09:00:00", end: "09:50:00" },
     { period: 2, start: "09:50:00", end: "10:40:00" },
     { period: 3, start: "10:50:00", end: "11:40:00" },
-    { period: 4, start: "11:40:00", end: "12:30:00" },
-    { period: 5, start: "13:50:00", end: "14:30:00" },
-    { period: 6, start: "14:40:00", end: "15:20:00" },
-    { period: 7, start: "15:20:00", end: "16:00:00" },
+    { period: 4, start: "11:40:00", end: "12:30:00" }, // Slot 4: Everyone in class
+    { period: "Lunch", start: "12:30:00", end: "13:50:00" }, // Index 4: Always empty on Fridays (Common Break)
+    { period: 5, start: "13:50:00", end: "14:30:00" }, // Index 5 -> F5 (01:50 PM - 02:30 PM)
+    { period: 6, start: "14:40:00", end: "15:20:00" }, // Index 6 -> F6 (02:40 PM - 03:20 PM)
+    { period: 7, start: "15:20:00", end: "16:00:00" }, // Index 7 -> F7 (03:20 PM - 04:00 PM)
   ];
   return dayKey === "friday" ? fri : monThu;
 }
@@ -78,7 +81,6 @@ export default function StaffPopup({ staff, onClose = () => { } }) {
   const dayKey = getDayKeyFromDateObj(new Date());
   const meta = STATUS_META[staff.status] || STATUS_META.available;
 
-  // Logical check: If status is holiday, closed, or on_leave, we treat it as "Schedule Unavailable"
   const isGlobalOff = staff.status === 'holiday' || staff.status === 'closed' || staff.status === 'on_leave';
 
   useEffect(() => {
@@ -86,7 +88,6 @@ export default function StaffPopup({ staff, onClose = () => { } }) {
 
     const loadAllData = async () => {
       setLoading(true);
-      // We always load profile data so contact info is available
       await loadProfileData();
 
       if (!isGlobalOff) {
