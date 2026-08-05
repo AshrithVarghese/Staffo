@@ -7,11 +7,12 @@ pkgs.mkShell {
       openpyxl
       python-dotenv
       supabase
+      pillow
       pip
     ]))
   ];
 
   shellHook = ''
-    echo "🐍 Python environment loaded for Supabase Excel import!"
+    echo "Python environment loaded for Supabase Excel import!"
   '';
 }

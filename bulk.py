@@ -1,6 +1,9 @@
 import os
 import re
+import io
+import time
 import pandas as pd
+from PIL import Image
 from supabase import create_client
 from dotenv import load_dotenv
 from openpyxl import load_workbook
@@ -17,6 +20,7 @@ supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 FILE = "cse.xlsx"
 BUCKET = "avatars"
 DEPT = "CSE"
+WEBP_QUALITY = 80  # Compression quality (1-100)
 
 DAY_MAP = {
     "M": "monday",
@@ -27,9 +31,21 @@ DAY_MAP = {
     "Sa": "saturday",
 }
 
-# 1. UPDATED: Now creates 8 slots per day (indices 0 to 7)
+# Creates 8 slots per day (indices 0 to 7)
 def empty_week():
     return {day: [None] * 8 for day in DAY_MAP.values()}
+
+# ================= IMAGE COMPRESSION HELPER =================
+def compress_to_webp(image_bytes, quality=WEBP_QUALITY):
+    """Converts raw image bytes to WebP format in-memory."""
+    with Image.open(io.BytesIO(image_bytes)) as img:
+        # Convert palette/CMYK modes to RGB for WebP compatibility
+        if img.mode in ("P", "CMYK"):
+            img = img.convert("RGB")
+        
+        output = io.BytesIO()
+        img.save(output, format="WEBP", quality=quality, method=4)
+        return output.getvalue()
 
 # ================= LOAD AUTH USERS =================
 print("📦 Loading auth users...")
@@ -87,30 +103,42 @@ for index, row in df.iterrows():
         "dept": DEPT,
     }
 
-    # ---------- IMAGE: DELETE → UPLOAD ----------
+    # ---------- IMAGE: COMPRESS → DELETE → UPLOAD ----------
     if excel_row in row_images:
-        file_path = f"{user_id}/profile.jpg"
+        file_path = f"{user_id}/profile.webp"
 
+        # 1. Convert raw bytes to compressed WebP
+        webp_bytes = compress_to_webp(row_images[excel_row], quality=WEBP_QUALITY)
+
+        # 2. Clean up both legacy JPG and existing WebP files
         try:
-            supabase.storage.from_(BUCKET).remove([file_path])
-            print("🗑 Old photo removed (if existed)")
+            supabase.storage.from_(BUCKET).remove([
+                f"{user_id}/profile.jpg",
+                f"{user_id}/profile.webp"
+            ])
+            print("🗑 Old photos removed")
         except Exception:
             pass
 
+        # 3. Upload with upsert forced to true
         supabase.storage.from_(BUCKET).upload(
             file_path,
-            row_images[excel_row],
+            webp_bytes,
             file_options={
-                "content-type": "image/jpeg",
-                "upsert": "false",
+                "content-type": "image/webp",
+                "upsert": "true",
             },
         )
 
+        # 4. Append cache-buster timestamp so frontend re-downloads fresh image
+        timestamp = int(time.time())
         staff_payload["photo_url"] = (
-            f"{SUPABASE_URL}/storage/v1/object/public/{BUCKET}/{file_path}"
+            f"{SUPABASE_URL}/storage/v1/object/public/{BUCKET}/{file_path}?v={timestamp}"
         )
 
-        print("✔ Photo uploaded")
+        print("✔ Photo compressed to WebP & uploaded")
+    else:
+        print(f"⚠ No image detected at Excel row {excel_row}")
 
     supabase.table("staff").upsert(
         staff_payload,
@@ -129,7 +157,7 @@ for index, row in df.iterrows():
     staff_id = staff_row.data["id"]
     print("✔ Staff upserted")
 
-# ---------- TIMETABLE UPSERT (UPDATED LOGIC) ----------
+    # ---------- TIMETABLE UPSERT ----------
     week = empty_week()
 
     for col in df.columns:
